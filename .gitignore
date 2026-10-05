@@ -1,0 +1,6 @@
+node_modules
+dist
+public/photos
+.DS_Store
+tools/shots
+assets/photos

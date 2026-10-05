@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sprite inspector (dev only)</title>
+    <style>
+      body { margin: 0; background: #2a2440; }
+      canvas { image-rendering: pixelated; display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="800" height="600"></canvas>
+    <script type="module">
+      // Dev tool: renders heads / poses / costumes big for inspection.
+      //   ?mode=heads            all 18 pixel heads at 4x
+      //   ?mode=poses&char=yotam every pose for one character
+      //   ?mode=costumes         every special costume (idle pose)
+      //   ?mode=row&pose=idle    one pose for all characters
+      import { CHARACTERS } from '../src/data/characters.js';
+      import { SpriteBank } from '../src/render/sprites.js';
+      import { POSES } from '../src/render/poses.js';
+      import { getSpecial } from '../src/game/specials/index.js';
+      import { drawText } from '../src/render/font.js';
+      const q = new URLSearchParams(location.search);
+      const mode = q.get('mode') || 'heads';
+      const c = document.getElementById('c');
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      const bank = new SpriteBank();
+      await bank.load(CHARACTERS);
+      const draw = (fr, x, y, s, flip = false) => {
+        g.save(); g.translate(x, y); g.scale(flip ? -s : s, s); g.drawImage(fr.canvas, -fr.ax, -fr.ay); g.restore();
+      };
+      if (mode === 'heads') {
+        CHARACTERS.forEach((ch, i) => {
+          const p = bank.portrait(ch.id);
+          const x = (i % 6) * 130 + 10, y = Math.floor(i / 6) * 195 + 6;
+          g.drawImage(p, x, y, p.width * 4, p.height * 4);
+          drawText(g, ch.name, x, y + 134, { scale: 2, color: '#fff' });
+        });
+      } else if (mode === 'compare') {
+        // photo crop (left) vs pixel-art head at 2x (right)
+        for (const [i, ch] of CHARACTERS.entries()) {
+          const img = await new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = '/photos/' + ch.id + '.jpg'; });
+          const x = (i % 6) * 132 + 4, y = Math.floor(i / 6) * 196 + 4;
+          if (img && ch.face) {
+            const h = ch.face.h * img.height * 1.1, w = h * 0.875;
+            g.imageSmoothingEnabled = true;
+            g.drawImage(img, ch.face.x * img.width - w / 2, ch.face.y * img.height - h / 2, w, h, x, y, 56, 64);
+            g.imageSmoothingEnabled = false;
+          }
+          const p = bank.portrait(ch.id);
+          g.drawImage(p, x + 62, y, p.width * 2, p.height * 2);
+          const fr = bank.frame(ch.id, 'idle', 0);
+          g.save(); g.translate(x + 66, y + 182); g.scale(1, 1); g.drawImage(fr.canvas, -fr.ax, -fr.ay); g.restore();
+          drawText(g, ch.name, x, y + 70, { color: '#fff' });
+        }
+      } else if (mode === 'poses') {
+        const id = q.get('char') || 'yotam';
+        const s = Number(q.get('scale') || 2);
+        const from = Number(q.get('from') || 0);
+        const cols = Math.floor(800 / (60 * s)), rowH = 105 * s;
+        const list = [];
+        for (const [name, frames] of Object.entries(POSES)) frames.forEach((_, fi) => list.push([name, fi]));
+        list.slice(from).forEach(([name, fi], k) => {
+          const x = (k % cols) * 60 * s + 30 * s, y = Math.floor(k / cols) * rowH + 92 * s;
+          draw(bank.frame(id, name, fi, q.get('cos') ? JSON.parse(q.get('cos')) : null), x, y, s);
+          drawText(g, `${name}${fi}`, x - 28 * s, y + 4, { color: '#ffd23f' });
+        });
+      } else if (mode === 'costumes') {
+        CHARACTERS.forEach((ch, i) => {
+          const sp = getSpecial(ch.special.type);
+          const fake = { sd: {}, def: ch };
+          let cos = typeof sp.costume === 'function' ? sp.costume(fake, 60) : sp.costume;
+          const an = sp.anim ? sp.anim(fake, 10) : { pose: 'cast', frame: 0 };
+          const x = (i % 9) * 88 + 44, y = Math.floor(i / 9) * 290 + 250;
+          draw(bank.frame(ch.id, an.pose, an.frame, cos), x, y, 1.6);
+          drawText(g, ch.name, x - 30, y + 6, { color: '#fff' });
+        });
+      } else if (mode === 'row') {
+        const pose = q.get('pose') || 'idle';
+        const s = Number(q.get('scale') || 2);
+        CHARACTERS.forEach((ch, i) => {
+          const x = (i % 9) * 88 + 44, y = Math.floor(i / 9) * 290 + 260;
+          draw(bank.frame(ch.id, pose, Number(q.get('frame') || 0)), x, y, s * 0.75);
+          drawText(g, ch.name, x - 30, y + 6, { color: '#fff' });
+        });
+      }
+      // Save a copy via the dev server (tools/shots/inspect_<mode>.png)
+      await fetch('/__shot?name=inspect_' + (q.get('name') || mode), { method: 'POST', body: c.toDataURL('image/png') }).catch(() => {});
+      window.__done = true;
+    </script>
+  </body>
+</html>

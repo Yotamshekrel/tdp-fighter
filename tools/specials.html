@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Special attack sheet (dev only)</title>
+    <style>body { margin: 0; background: #111; } canvas { display: block; width: 100vw; }</style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      // Dev tool: plays one special attack and shows a contact sheet of frames.
+      //   ?char=yotam&foe=shay&arena=beach&at=4,12,24,40&crop=caster&w=130&y0=120&y1=210&cols=2&gap=180
+      // `at` = frames after the wind-up ends (default 0,10,25,45).  crop=caster zooms on the caster.
+      import { VIEW } from '../src/config.js';
+      import { CHARACTERS } from '../src/data/characters.js';
+      import { SpriteBank } from '../src/render/sprites.js';
+      import { Battle } from '../src/game/battle.js';
+      import { drawBattle } from '../src/render/battle-render.js';
+      import { Hud } from '../src/render/hud.js';
+      import { loadFonts } from '../src/render/fonts.js';
+
+      const q = new URLSearchParams(location.search);
+      const id = q.get('char') || 'yotam', foeId = q.get('foe') || 'shay', arena = q.get('arena') || 'beach';
+      const at = (q.get('at') || '0,10,25,45').split(',').map(Number);
+      const cols = Number(q.get('cols') || 2);
+      const { W, H, SCALE: S } = VIEW;
+      await loadFonts('../public/');
+      const bank = new SpriteBank();
+      await bank.load(CHARACTERS.filter((c) => c.id === id || c.id === foeId));
+      const by = (i) => CHARACTERS.find((c) => c.id === i);
+
+      const battle = new Battle({ chars: [by(id), by(foeId)], controllers: [{ read() {} }, { read() {} }], arena });
+      const hud = new Hud();
+      const cv = document.createElement('canvas');
+      cv.width = W * S;
+      cv.height = H * S;
+      const g = cv.getContext('2d');
+      const render = (snap) => {
+        if (snap) battle.cam && (battle.cam.init = false);
+        g.setTransform(S, 0, 0, S, 0, 0);
+        drawBattle(g, battle, bank, hud, battle.frame, false);
+      };
+      for (let i = 0; i < 230 && battle.phase !== 'fight'; i++) { battle.update(); }
+      for (let i = 0; i < 30; i++) { battle.update(); render(); }
+      const f = battle.fighters[0], o = battle.fighters[1];
+      if (q.get('gap')) { f.x = 240 - q.get('gap') / 2; o.x = 240 + q.get('gap') / 2; }
+      f.meter = 100;
+      f.startSpecial(battle);
+      const sp = f.special;
+      const cells = [];
+      let done = 0;
+      const target = at.map((a) => sp.windup + a);
+      const snap = () => {
+        render(true);
+        const z = battle.cam.z, cx = battle.cam.x;
+        let x0, x1, y0, y1;
+        if (q.get('crop') === 'caster') {
+          const w = Number(q.get('w') || 130);
+          x0 = f.x - w * 0.35; x1 = f.x + w * 0.65; y0 = Number(q.get('y0') || 120); y1 = Number(q.get('y1') || 210);
+        } else {
+          const mid = (f.x + o.x) / 2, w = Math.max(Math.abs(f.x - o.x) + 190, 280);
+          x0 = mid - w / 2; x1 = mid + w / 2; y0 = 40; y1 = 256;
+        }
+        const X0 = (x0 - cx) * z * S, X1 = (x1 - cx) * z * S, Y0 = (H + (y0 - H) * z) * S, Y1 = (H + (y1 - H) * z) * S;
+        const c = document.createElement('canvas');
+        c.width = 640;
+        c.height = Math.round((640 * (Y1 - Y0)) / (X1 - X0));
+        c.getContext('2d').drawImage(cv, X0, Y0, X1 - X0, Y1 - Y0, 0, 0, c.width, c.height);
+        cells.push(c);
+      };
+      for (const tf of target) {
+        while (done < tf - 1) { battle.update(); render(); done++; }
+        battle.update(); done++;
+        snap();
+      }
+      const rows = Math.ceil(cells.length / cols), cw = cells[0].width, ch = cells[0].height;
+      const out = document.getElementById('c');
+      out.width = cw * cols;
+      out.height = ch * rows;
+      const og = out.getContext('2d');
+      cells.forEach((c, i) => og.drawImage(c, (i % cols) * cw, Math.floor(i / cols) * ch));
+      document.title = `done windup=${sp.windup} duration=${sp.duration}`;
+    </script>
+  </body>
+</html>

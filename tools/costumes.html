@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Costume gallery (dev only)</title>
+    <style>body { margin: 0; background: #2a2440; } canvas { display: block; }</style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      // Dev tool: each fighter in the costume their special attack gives them.
+      //   ?chars=hadar,maya&pose=raise&frame=0&scale=3.4&cols=2
+      import { CHARACTERS } from '../src/data/characters.js';
+      import { SpriteBank, drawFrame } from '../src/render/sprites.js';
+      import { getSpecial } from '../src/game/specials/index.js';
+      const q = new URLSearchParams(location.search);
+      const ids = (q.get('chars') || CHARACTERS.map((c) => c.id).join(',')).split(',');
+      const pose = q.get('pose') || 'raise', frame = Number(q.get('frame') || 0), s = Number(q.get('scale') || 3.4);
+      const cols = Number(q.get('cols') || 2);
+      const c = document.getElementById('c');
+      const g = c.getContext('2d');
+      const bank = new SpriteBank();
+      await bank.load(CHARACTERS.filter((ch) => ids.includes(ch.id)));
+      const cw = 100 * s, chh = 100 * s;
+      c.width = cw * cols;
+      c.height = Math.ceil(ids.length / cols) * chh;
+      g.fillStyle = '#3a3456';
+      g.fillRect(0, 0, c.width, c.height);
+      g.font = '14px monospace';
+      ids.forEach((id, i) => {
+        const def = CHARACTERS.find((ch) => ch.id === id);
+        const sp = getSpecial(def.special.type);
+        const f = { sd: { released: false, thrown: false }, scale: 1 };
+        const cos = typeof sp.costume === 'function' ? sp.costume(f, 40) : sp.costume;
+        const x = (i % cols) * cw + cw / 2, y = Math.floor(i / cols) * chh + chh * 0.88;
+        g.save();
+        g.translate(x, y);
+        g.scale(s, s);
+        drawFrame(g, bank.frame(id, q.get('pose') || (sp.anim ? sp.anim(f, 40).pose : 'raise'), frame, cos || null));
+        g.restore();
+        g.fillStyle = '#fff';
+        g.fillText(`${id} / ${def.special.type}`, x - 60, y + 18);
+      });
+      document.title = 'done';
+    </script>
+  </body>
+</html>

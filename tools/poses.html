@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pose sheet (dev only)</title>
+    <style>body { margin: 0; background: #2a2440; } canvas { display: block; }</style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      // Dev tool: every pose of one fighter side by side.
+      //   ?char=ido&scale=1.5&poses=idle,punch&cos={"hat":"wizard","prop":"wand"}
+      import { CHARACTERS } from '../src/data/characters.js';
+      import { SpriteBank, drawFrame } from '../src/render/sprites.js';
+      import { POSES } from '../src/render/poses.js';
+      const q = new URLSearchParams(location.search);
+      const id = q.get('char') || 'ido';
+      const s = Number(q.get('scale') || 1.6);
+      const cos = q.get('cos') ? JSON.parse(q.get('cos')) : null;
+      const only = q.get('poses') ? q.get('poses').split(',') : null;
+      const c = document.getElementById('c');
+      const g = c.getContext('2d');
+      const bank = new SpriteBank();
+      await bank.load(CHARACTERS.filter((ch) => ch.id === id));
+
+      const cw = 100 * s, chh = 100 * s;
+      c.width = Math.max(cw, innerWidth - 20); // fit the window; the height follows the number of frames
+      const cols = Math.max(1, Math.floor(c.width / cw));
+      const total = Object.entries(POSES).reduce((n, [name, f]) => n + (only && !only.includes(name) ? 0 : f.length), 0);
+      c.height = Math.ceil(total / cols) * chh + 20;
+      g.fillStyle = '#3a3456';
+      g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = '#fff';
+      g.font = '14px monospace';
+      let i = 0;
+      for (const [name, frames] of Object.entries(POSES)) {
+        if (only && !only.includes(name)) continue;
+        frames.forEach((_, k) => {
+          const col = i % cols, row = Math.floor(i / cols);
+          const x = col * cw + cw / 2, y = row * chh + chh * 0.85;
+          g.save();
+          g.translate(x, y);
+          g.scale(s, s);
+          drawFrame(g, bank.frame(id, name, k, cos));
+          g.restore();
+          g.fillText(`${name}${k}`, x - 36, y + 18);
+          i++;
+        });
+      }
+      document.title = 'done';
+    </script>
+  </body>
+</html>

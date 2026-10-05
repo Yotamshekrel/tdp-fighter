@@ -1,0 +1,19 @@
+{
+  "name": "tdp-fighter",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Modern 2D fighting game starring 18 friends, built with HTML5 Canvas + vanilla JS.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "simulate": "node scripts/simulate.mjs",
+    "test": "node scripts/test-specials.mjs && node scripts/simulate.mjs normal 2 && node scripts/test-difficulty.mjs 20",
+    "fighters": "node scripts/build-fighters.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.0",
+    "vite": "^6.0.0"
+  }
+}
