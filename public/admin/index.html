@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>TDP Fighter · Admin</title>
+<style>
+  :root {
+    --bg: #0e0a1a; --panel: #181226; --line: #2a2140; --text: #ece8f7; --muted: #9a90b5;
+    --accent: #8b6cff; --accent2: #ffb84d; --good: #4ade80; --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .sub { color: var(--muted); font-size: 13px; }
+  button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .grid { display: grid; gap: 14px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 14px; }
+  .cols { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+  .kpi .num { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .kpi .lbl { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); margin-right: 6px; box-shadow: 0 0 8px var(--good); }
+  .bar-row { display: grid; grid-template-columns: minmax(70px, 30%) 1fr auto; gap: 10px; align-items: center; margin: 7px 0; font-size: 14px; }
+  .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
+  .bar-row .val { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  .num-r { text-align: right; font-variant-numeric: tabular-nums; }
+  .tag { padding: 1px 7px; border-radius: 99px; font-size: 11px; background: var(--line); color: var(--muted); }
+  .tag.new { background: rgba(255,184,77,.15); color: var(--accent2); }
+  .empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  svg text { fill: var(--muted); font-size: 10px; }
+  #login { max-width: 340px; margin: 14vh auto 0; }
+  #login input { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+  #login input:focus { outline: none; border-color: var(--accent); }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; }
+  .hidden { display: none; }
+  .win { color: var(--good); } .lose { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <section id="login" class="card hidden">
+    <h1>TDP Fighter · Admin</h1>
+    <form id="loginForm">
+      <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" autofocus>
+      <button class="primary" style="width:100%">Sign in</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <div id="dash" class="hidden">
+    <header>
+      <div>
+        <h1>TDP Fighter · Admin</h1>
+        <div class="sub" id="updated"></div>
+      </div>
+      <div><button id="refresh">Refresh</button> <button id="logout">Sign out</button></div>
+    </header>
+
+    <div class="grid kpis" id="kpis"></div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>Last 30 days</h2>
+      <div class="legend"><span><b style="background:var(--accent)"></b>Different devices</span><span><b style="background:var(--accent2)"></b>Matches started</span></div>
+      <div id="daily"></div>
+    </div>
+
+    <div class="grid cols">
+      <div class="card"><h2>Modes</h2><div id="modes"></div></div>
+      <div class="card"><h2>Difficulty (1P)</h2><div id="difficulties"></div></div>
+      <div class="card"><h2>You vs the CPU — human win rate</h2><div id="vsCpu"></div></div>
+      <div class="card"><h2>Arenas</h2><div id="arenas"></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>Fighters</h2>
+      <div class="scroll"><table id="characters"></table></div>
+    </div>
+
+    <div class="grid cols">
+      <div class="card"><h2>Countries</h2><div id="countries"></div></div>
+      <div class="card"><h2>Cities</h2><div id="cities"></div></div>
+      <div class="card"><h2>Device type</h2><div id="deviceTypes"></div></div>
+      <div class="card"><h2>Operating system</h2><div id="systems"></div></div>
+      <div class="card"><h2>Browser</h2><div id="browsers"></div></div>
+      <div class="card"><h2>Which site</h2><div id="hosts"></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h2>Busiest hours</h2>
+      <div id="hourly"></div>
+    </div>
+
+    <div class="grid cols" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr))">
+      <div class="card"><h2>Recent visits</h2><div class="scroll"><table id="recentVisits"></table></div></div>
+      <div class="card"><h2>Recent matches</h2><div class="scroll"><table id="recentMatches"></table></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const KEY = 'tdp-admin-pw';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nice = (s) => esc(String(s ?? 'unknown').replace(/[-_]/g, ' ').replace(/^./, (c) => c.toUpperCase()));
+const fmt = (n) => Number(n).toLocaleString();
+const API = /\.vercel\.app$|^localhost$/.test(location.hostname) ? '/api/stats' : 'https://tdp-fighter.vercel.app/api/stats';
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+let timer;
+
+function dur(sec) {
+  sec = Math.round(sec);
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ${sec % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+function ago(iso) {
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '–');
+
+function bars(el, items, { label = (r) => nice(r.label), value = (r) => r.n, total } = {}) {
+  if (!items.length) { $(el).innerHTML = '<div class="empty">No data yet</div>'; return; }
+  const max = Math.max(...items.map(value));
+  const sum = total ?? items.reduce((a, r) => a + value(r), 0);
+  $(el).innerHTML = items.map((r) => `
+    <div class="bar-row"><span class="name" title="${label(r)}">${label(r)}</span>
+      <span class="bar"><i style="width:${(value(r) / max) * 100}%"></i></span>
+      <span class="val">${fmt(value(r))} · ${pct(value(r), sum)}</span></div>`).join('');
+}
+
+function dailyChart(days) {
+  const W = 1000, H = 190, L = 28, B = 22, T = 8;
+  const max = Math.max(4, ...days.map((d) => Math.max(d.devices, d.matches)));
+  const step = Math.max(1, Math.ceil(max / 4)), top = step * Math.ceil(max / step);
+  const bw = (W - L) / days.length;
+  const y = (v) => T + (H - T - B) * (1 - v / top);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Devices and matches per day">`;
+  for (let v = 0; v <= top; v += step) s += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
+  days.forEach((d, i) => {
+    const x = L + i * bw;
+    s += `<rect x="${x + bw * 0.18}" width="${bw * 0.64}" y="${y(d.devices)}" height="${y(0) - y(d.devices)}" rx="2" fill="var(--accent)"><title>${d.day}: ${d.devices} devices, ${d.visits} visits, ${d.matches} matches</title></rect>`;
+    if (i % 5 === 0 || i === days.length - 1) s += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d.day.slice(5)}</text>`;
+  });
+  const pts = days.map((d, i) => `${L + i * bw + bw / 2},${y(d.matches)}`).join(' ');
+  s += `<polyline points="${pts}" fill="none" stroke="var(--accent2)" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+  $('daily').innerHTML = s;
+}
+
+function hourChart(hours) {
+  const by = Object.fromEntries(hours.map((h) => [h.hour, h.n]));
+  const vals = Array.from({ length: 24 }, (_, h) => by[h] || 0);
+  const max = Math.max(1, ...vals);
+  let s = '<svg viewBox="0 0 1000 110" width="100%" role="img" aria-label="Visits by hour of day">';
+  vals.forEach((v, h) => {
+    const bh = (v / max) * 80, x = h * (1000 / 24);
+    s += `<rect x="${x + 6}" width="${1000 / 24 - 12}" y="${88 - bh}" height="${bh}" rx="2" fill="var(--accent)"><title>${String(h).padStart(2, '0')}:00 — ${v} visits</title></rect>`;
+    if (h % 3 === 0) s += `<text x="${x + 1000 / 48}" y="104" text-anchor="middle">${String(h).padStart(2, '0')}</text>`;
+  });
+  $('hourly').innerHTML = s + '</svg>';
+}
+
+function table(el, head, rows) {
+  $(el).innerHTML = rows.length
+    ? `<thead><tr>${head.map((h, i) => `<th class="${h.r ? 'num-r' : ''}">${h.t}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`
+    : '<tbody><tr><td class="empty">No data yet</td></tr></tbody>';
+}
+
+function render(d) {
+  const t = d.totals;
+  const kpis = [
+    [`<span class="live"></span>${t.online_now}`, 'Online now (5 min)'],
+    [fmt(t.devices), 'Different devices, all time'],
+    [fmt(t.devices_24h), 'Devices · last 24h'],
+    [fmt(t.devices_7d), 'Devices · last 7 days'],
+    [fmt(t.devices_30d), 'Devices · last 30 days'],
+    [fmt(t.returning_devices), 'Came back on another day'],
+    [fmt(t.visits), 'Page loads'],
+    [fmt(t.started), 'Games started'],
+    [fmt(t.finished), 'Games finished'],
+    [fmt(t.abandoned), 'Quit / unfinished'],
+    [fmt(t.players), 'Devices that played'],
+    [t.finished ? dur(t.avg_seconds) : '–', 'Avg game length'],
+    [dur(t.total_seconds), 'Total time fighting'],
+  ];
+  $('kpis').innerHTML = kpis.map(([n, l]) => `<div class="card kpi"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('');
+  $('updated').textContent = `Updated ${new Date(d.generatedAt).toLocaleTimeString()} · times in ${d.tz}${t.first_event ? ` · tracking since ${new Date(t.first_event).toLocaleDateString()}` : ''}`;
+
+  dailyChart(d.daily);
+  hourChart(d.hourly);
+  bars('modes', d.modes, { label: (r) => (r.label === '1p' ? '1 Player vs CPU' : r.label === '2p' ? '2 Players' : nice(r.label)) });
+  bars('difficulties', d.difficulties.filter((r) => r.label !== 'unknown' && r.label !== 'null'));
+  bars('arenas', d.arenas);
+  $('vsCpu').innerHTML = d.vsCpu.length ? d.vsCpu.map((r) => `
+    <div class="bar-row"><span class="name">${nice(r.label)}</span>
+      <span class="bar"><i style="width:${r.played ? (r.won / r.played) * 100 : 0}%"></i></span>
+      <span class="val">${pct(r.won, r.played)} of ${fmt(r.played)}</span></div>`).join('') : '<div class="empty">No finished games yet</div>';
+
+  const chars = [...d.characters].sort((a, b) => b.picks - a.picks);
+  table('characters', [{ t: 'Fighter' }, { t: 'Picked', r: 1 }, { t: 'Finished', r: 1 }, { t: 'Wins', r: 1 }, { t: 'Win rate', r: 1 }],
+    chars.map((c) => `<tr><td>${nice(c.id)}</td><td class="num-r">${fmt(c.picks)}</td><td class="num-r">${fmt(c.played)}</td><td class="num-r">${fmt(c.won)}</td><td class="num-r">${pct(c.won, c.played)}</td></tr>`));
+
+  for (const k of ['countries', 'cities', 'browsers', 'systems', 'deviceTypes', 'hosts']) {
+    bars(k, d[k], { label: (r) => (k === 'hosts' ? esc(r.label) : nice(r.label)) });
+  }
+
+  table('recentVisits', [{ t: 'When' }, { t: 'Device' }, { t: 'Where' }, { t: 'Using' }, { t: '' }],
+    d.recentVisits.map((v) => `<tr><td>${ago(v.ts)}</td><td><code>${esc(v.device)}</code></td><td>${esc([v.city, v.country].filter(Boolean).join(', ') || '–')}</td><td>${esc(v.browser)} · ${esc(v.os)}${v.kind !== 'desktop' ? ' · ' + esc(v.kind) : ''}</td><td>${v.returning ? '' : '<span class="tag new">new</span>'}</td></tr>`));
+
+  table('recentMatches', [{ t: 'When' }, { t: 'Match' }, { t: 'Result' }, { t: 'Length', r: 1 }],
+    d.recentMatches.map(({ ts, data: m }) => {
+      const res = m.winner === -1 ? 'Draw' : m.mode === '1p' ? (m.winner === 0 ? '<span class="win">Human won</span>' : '<span class="lose">CPU won</span>') : `P${m.winner + 1} won`;
+      return `<tr><td>${ago(ts)}</td><td>${nice(m.p1)} vs ${nice(m.p2)} <span class="tag">${m.mode === '2p' ? '2P' : nice(m.difficulty)}</span></td><td>${res}</td><td class="num-r">${m.seconds != null ? dur(m.seconds) : '–'}</td></tr>`;
+    }));
+}
+
+async function load() {
+  const pw = sessionStorage.getItem(KEY);
+  if (!pw) return showLogin();
+  let res;
+  try { res = await fetch(`${API}?tz=${encodeURIComponent(tz)}`, { headers: { Authorization: `Bearer ${pw}` } }); }
+  catch { $('updated').textContent = 'Could not reach the server — will retry.'; return schedule(); }
+  if (res.status === 401) { sessionStorage.removeItem(KEY); return showLogin('Wrong password'); }
+  if (!res.ok) { $('login').classList.add('hidden'); $('dash').classList.remove('hidden'); $('updated').textContent = res.status === 503 ? 'Database is not connected yet.' : 'Server error — will retry.'; return schedule(); }
+  $('login').classList.add('hidden'); $('dash').classList.remove('hidden');
+  render(await res.json());
+  schedule();
+}
+const schedule = () => { clearTimeout(timer); timer = setTimeout(load, 30000); };
+function showLogin(msg = '') {
+  clearTimeout(timer);
+  $('dash').classList.add('hidden'); $('login').classList.remove('hidden');
+  $('loginErr').textContent = msg; $('pw').value = ''; $('pw').focus();
+}
+
+$('loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!$('pw').value) return;
+  sessionStorage.setItem(KEY, $('pw').value);
+  $('loginErr').textContent = 'Checking…';
+  load();
+});
+$('refresh').addEventListener('click', load);
+$('logout').addEventListener('click', () => { sessionStorage.removeItem(KEY); showLogin(); });
+load();
+</script>
+</body>
+</html>

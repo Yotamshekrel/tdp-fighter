@@ -10,6 +10,7 @@ import { drawText } from '../render/font.js';
 import { dim, drawMenu, hitTest, GOLD } from './ui.js';
 import { glass } from '../render/ui-kit.js';
 import { drawControlsCard } from './controls-card.js';
+import { trackMatch } from '../analytics.js';
 
 const CARD_FRAMES = 6 * 60; // the controls card auto-continues after 6 s
 
@@ -32,6 +33,7 @@ export class FightScene {
       mode === 'demo' ? [new CpuBot(difficulty), new CpuBot(difficulty)] :
       [human(0), new CpuBot(difficulty)];
     this.battle = new Battle({ chars, controllers, arena });
+    this.tracker = mode === 'demo' ? null : trackMatch({ mode, difficulty, arena, chars });
     this.hud = new Hud();
     this.paused = false;
     this.sel = 0;
@@ -83,6 +85,8 @@ export class FightScene {
     }
     if (this.battle.phase === 'intro' && this.battle.phaseT === 1) this.hud.reset();
     if (this.battle.phase === 'matchEnd' && ++this.endT > 40) {
+      this.tracker?.end({ winner: this.battle.matchWinner?.side ?? -1, rounds: this.battle.round });
+      this.tracker = null;
       this.game.go('results', { ...this.params, winner: this.battle.matchWinner?.side ?? -1, stats: this.battle.stats });
     }
   }

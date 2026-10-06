@@ -16,6 +16,7 @@ import { FightScene } from './scenes/fight.js';
 import { ResultsScene } from './scenes/results.js';
 import { drawText } from './render/font.js';
 import { loadFonts } from './render/fonts.js';
+import { trackVisit } from './analytics.js';
 
 const canvas = document.getElementById('screen');
 canvas.width = VIEW.W * VIEW.SCALE;
@@ -101,6 +102,8 @@ window.addEventListener('keydown', (e) => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && !game.noAutoPause && game.sceneName === 'fight' && game.scene.params?.mode !== 'demo') game.scene.paused = true;
 });
+
+trackVisit();
 
 const FADE = 10;
 game.switchNow('loading');

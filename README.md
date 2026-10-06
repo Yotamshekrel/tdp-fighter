@@ -1,8 +1,8 @@
 # TDP Fighter
 
 A modern 2D fighting game starring 18 friends. Plain HTML5 Canvas and vanilla
-JavaScript (ES modules), bundled with Vite. There's no engine, no AI services and
-no network calls at runtime, and it works offline once loaded.
+JavaScript (ES modules), bundled with Vite. There's no engine and no AI services, and it works offline once loaded. The only
+network call is an anonymous usage ping (see **Analytics** below).
 
 All 18 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
 cut into limbs and re-posed for every animation. Arenas, HUD, menus and effects are
@@ -151,3 +151,18 @@ In the browser, press <code>`</code> during a fight to show hitboxes.
 
 UI font: Barlow Condensed by The Barlow Project Authors, SIL Open Font License 1.1
 (`public/fonts/OFL.txt`).
+
+## Analytics and the admin page
+
+The game sends anonymous events (page load, match start, match end) to `api/track.js`,
+which stores them in a Neon Postgres database attached to the Vercel project. Nothing
+personal is stored: a random id kept in the browser's localStorage (this is what counts
+as one "device"), the browser/OS, country/city from Vercel's edge, and what was played.
+It is off on localhost and for visitors with Do-Not-Track.
+
+The game itself is served from GitHub Pages; Vercel only hosts the `api/` functions (and
+the database). The private dashboard is at `/admin/` (on GitHub Pages or
+`tdp-fighter.vercel.app`; both read the same API). It asks for the
+`ADMIN_PASSWORD` environment variable (set in Vercel; a copy is in `.env.local`) and
+reads `api/stats.js`. To change the password: `vercel env rm ADMIN_PASSWORD` for each
+environment, `vercel env add ADMIN_PASSWORD production --sensitive`, then redeploy.
