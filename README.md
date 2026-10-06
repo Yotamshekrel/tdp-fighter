@@ -4,7 +4,7 @@ A modern 2D fighting game starring 18 friends. Plain HTML5 Canvas and vanilla
 JavaScript (ES modules), bundled with Vite. There's no engine, no AI services and
 no network calls at runtime, and it works offline once loaded.
 
-16 of the fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
+All 18 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
 cut into limbs and re-posed for every animation. Arenas, HUD, menus and effects are
 smooth vector art with glow, parallax and a gentle zoom camera. Sound is fully
 synthesised: layered impacts, reverb, stereo panning, five songs and an announcer.
@@ -108,10 +108,9 @@ tools/                      dev-only pages: poses.html, specials.html, costumes.
   specials follow the skeleton. Each fighter's on-screen size comes from
   `body.height` in `characters.js` and the global `BODY.SCALE` in `config.js`
   (hitboxes and special-attack origins grow with it).
-- **Ayoub and Nadav** have no picture yet, so they still use the old procedural
-  pixel bodies (`sprites.js`, `face-builder.js`, `look` / `body` / `colors` in
-  `characters.js`). Drop `assets/new_photos/Ayoub.png` / `Nadav.png` and run
-  `npm run fighters` and they switch over automatically.
+- Fighters without a picture fall back to the old procedural pixel bodies (`sprites.js`,
+  `face-builder.js`, `look` / `body` / `colors` in `characters.js`), so a new roster
+  entry works before its art exists.
 - **Special attacks** read the real on-screen hand, eye and mouth positions from the
   animation (`f.vis`), so beams, wands, thrown objects and sound waves start where
   the art is. Costumes (hats, props, tints) are drawn as vector art by `costumes.js`.

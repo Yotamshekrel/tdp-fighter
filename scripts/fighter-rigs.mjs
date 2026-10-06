@@ -38,6 +38,7 @@ export const KNEE_CUT_ABOVE_KNEE = 52;
  * joints optional per-joint overrides
  */
 export const RIGS = {
+  ayoub: { chin: 205 },
   ben: { chin: 195 },
   dvir: { chin: 195 },
   eshel: { chin: 190 },
@@ -46,6 +47,7 @@ export const RIGS = {
   ido: { chin: 200 },
   maya: { chin: 150, joints: { shoulderB: [-120, 265], elbowB: [-148, 406], handB: [-160, 545] } },
   mor: { chin: 190 },
+  nadav: { chin: 185 },
   noa: { chin: 150 },
   ofek: { chin: 185 },
   ofir: { chin: 200 },
