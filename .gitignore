@@ -4,3 +4,5 @@ public/photos
 .DS_Store
 tools/shots
 assets/photos
+.vercel
+.env*
