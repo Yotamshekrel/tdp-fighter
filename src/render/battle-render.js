@@ -7,9 +7,6 @@ import { postProcess } from './post.js';
 
 const { W, H, GROUND_Y } = VIEW;
 
-/** How much the arena floor mirrors the fighters (0 = matte). */
-const REFLECTION = { beach: 0.1, rooftop: 0.17, stadium: 0.07, shuk: 0.04 };
-
 export function drawFighter(g, f, bank, battle, reflect = 0) {
   const { pose, frame } = f.anim();
   const tint = f.flash > 0 && f.flash % 2 ? 'white' : f.frozen > 0 ? 'ice' : null;
@@ -110,7 +107,7 @@ export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}
   const [a, b] = battle.fighters;
   const freeze = battle.freeze.t > 0;
   const cam = updateCamera(battle);
-  const reflect = REFLECTION[arena.id] ?? 0;
+  const reflect = arena.reflect;
 
   g.save();
   if (battle.shake > 0) g.translate((Math.random() - 0.5) * battle.shake * 2, (Math.random() - 0.5) * battle.shake * 2);

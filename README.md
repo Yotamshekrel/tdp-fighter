@@ -75,7 +75,7 @@ src/render/                 drawing
   costumes.js               hats, props, scarves... the specials put on a hi-res fighter
   sprites.js                sprite bank: hi-res puppets + the old procedural pixel bodies
   poses.js                  pose skeletons for every animation frame
-  backgrounds.js            4 hi-res parallax arenas
+  backgrounds.js            arenas: one picture per file in assets/arenas/
   battle-render.js          camera (follow + zoom), shadows, floor reflections, entities
   hud.js, effects.js        health bars / banners / cut-in, particles
   ui-kit.js, fx-kit.js      glass panels, glows, smooth shapes for UI and special-attack effects
@@ -116,7 +116,7 @@ tools/                      dev-only pages: poses.html, specials.html, costumes.
   the art is. Costumes (hats, props, tints) are drawn as vector art by `costumes.js`.
 
 To see every pose of a fighter: `/tools/poses.html?char=maya`. Every special:
-`/tools/specials.html?char=hadar&foe=ido&arena=rooftop`. Costumes:
+`/tools/specials.html?char=hadar&foe=ido&arena=airport-deck`. Costumes:
 `/tools/costumes.html`. Sounds and songs: `/tools/audio.html` (renders everything
 offline and reports levels; click to listen).
 

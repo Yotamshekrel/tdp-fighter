@@ -253,6 +253,7 @@ export class ModeSelectScene {
   }
 
   drawArenaPage(g) {
+    const { W } = VIEW;
     const items = this.items();
     this.rects = drawMenu(g, items, this.sel, 118, 96, this.t, { gap: 25, scale: 1.1, width: 176 });
     const id = this.sel === 0 ? ARENAS[Math.floor(this.t / 70) % ARENAS.length].id : ARENAS[this.sel - 1].id;

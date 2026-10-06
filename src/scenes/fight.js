@@ -4,6 +4,7 @@ import { Battle } from '../game/battle.js';
 import { CpuBot } from '../game/cpu-bot.js';
 import { HumanController } from '../game/input.js';
 import { drawBattle } from '../render/battle-render.js';
+import { getArena } from '../render/backgrounds.js';
 import { Hud } from '../render/hud.js';
 import { drawText } from '../render/font.js';
 import { dim, drawMenu, hitTest, GOLD } from './ui.js';
@@ -39,7 +40,7 @@ export class FightScene {
     this.rects = [];
     // Every match starts with a reminder of the buttons (not in CPU demos).
     this.card = mode === 'demo' ? -1 : 0;
-    this.game.audio.playMusic(`fight_${arena}`); // each arena has its own track
+    this.game.audio.playMusic(getArena(arena).music); // each arena has its own track
   }
 
   update() {

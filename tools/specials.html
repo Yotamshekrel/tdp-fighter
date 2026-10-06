@@ -9,7 +9,7 @@
     <canvas id="c"></canvas>
     <script type="module">
       // Dev tool: plays one special attack and shows a contact sheet of frames.
-      //   ?char=yotam&foe=shay&arena=beach&at=4,12,24,40&crop=caster&w=130&y0=120&y1=210&cols=2&gap=180
+      //   ?char=yotam&foe=shay&arena=airport-deck&at=4,12,24,40&crop=caster&w=130&y0=120&y1=210&cols=2&gap=180
       // `at` = frames after the wind-up ends (default 0,10,25,45).  crop=caster zooms on the caster.
       import { VIEW } from '../src/config.js';
       import { CHARACTERS } from '../src/data/characters.js';
@@ -20,7 +20,7 @@
       import { loadFonts } from '../src/render/fonts.js';
 
       const q = new URLSearchParams(location.search);
-      const id = q.get('char') || 'yotam', foeId = q.get('foe') || 'shay', arena = q.get('arena') || 'beach';
+      const id = q.get('char') || 'yotam', foeId = q.get('foe') || 'shay', arena = q.get('arena') || 'airport-deck';
       const at = (q.get('at') || '0,10,25,45').split(',').map(Number);
       const cols = Number(q.get('cols') || 2);
       const { W, H, SCALE: S } = VIEW;

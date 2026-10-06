@@ -2,6 +2,7 @@
 import { VIEW } from '../config.js';
 import { drawText } from '../render/font.js';
 import { CHARACTERS } from '../data/characters.js';
+import { loadArenas } from '../render/backgrounds.js';
 import { menuBackdrop, rrPath, vgrad, glow } from '../render/ui-kit.js';
 
 export class LoadingScene {
@@ -14,10 +15,10 @@ export class LoadingScene {
     this.shown = 0;
     this.current = '';
     this.done = false;
-    this.game.bank.load(CHARACTERS, (p, def) => {
+    Promise.all([loadArenas(), this.game.bank.load(CHARACTERS, (p, def) => {
       this.progress = p;
       this.current = def.name;
-    }).then(() => {
+    })]).then(() => {
       this.done = true;
     });
   }
