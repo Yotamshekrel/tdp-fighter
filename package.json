@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "simulate": "node scripts/simulate.mjs",
-    "test": "node scripts/test-specials.mjs && node scripts/simulate.mjs normal 2 && node scripts/test-difficulty.mjs 20",
+    "test": "node scripts/test-specials.mjs && node scripts/simulate.mjs normal 2 && node scripts/test-difficulty.mjs 20 && node scripts/test-tournament.mjs 12",
     "fighters": "node scripts/build-fighters.mjs"
   },
   "devDependencies": {

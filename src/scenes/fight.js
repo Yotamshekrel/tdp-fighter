@@ -15,6 +15,7 @@ import { trackMatch } from '../analytics.js';
 const CARD_FRAMES = 6 * 60; // the controls card auto-continues after 6 s
 
 const PAUSE_ITEMS = ['RESUME', 'RESTART', 'CHARACTER SELECT', 'MAIN MENU'];
+const TOURNAMENT_PAUSE_ITEMS = ['RESUME', 'RESTART MATCH', 'QUIT TOURNAMENT'];
 
 export class FightScene {
   constructor(game) {
@@ -35,13 +36,14 @@ export class FightScene {
     this.battle = new Battle({ chars, controllers, arena });
     this.tracker = mode === 'demo' ? null : trackMatch({ mode, difficulty, arena, chars });
     this.hud = new Hud();
+    this.pauseItems = mode === 'tournament' ? TOURNAMENT_PAUSE_ITEMS : PAUSE_ITEMS;
     this.paused = false;
     this.sel = 0;
     this.t = 0;
     this.endT = 0;
     this.rects = [];
-    // Every match starts with a reminder of the buttons (not in CPU demos).
-    this.card = mode === 'demo' ? -1 : 0;
+    // Every match starts with a reminder of the buttons (not in CPU demos, and only for a tournament's first fight).
+    this.card = mode === 'demo' || (params.tournament && params.tournament.round > 0) ? -1 : 0;
     this.game.audio.playMusic(getArena(arena).music); // each arena has its own track
   }
 
@@ -64,8 +66,9 @@ export class FightScene {
     if (this.paused) {
       const hov = hitTest(input.pointer, this.rects);
       if (input.pointer.moved && hov >= 0) this.sel = hov;
-      if (m.up) { this.sel = (this.sel + PAUSE_ITEMS.length - 1) % PAUSE_ITEMS.length; audio.play('move'); }
-      if (m.down) { this.sel = (this.sel + 1) % PAUSE_ITEMS.length; audio.play('move'); }
+      const n = this.pauseItems.length;
+      if (m.up) { this.sel = (this.sel + n - 1) % n; audio.play('move'); }
+      if (m.down) { this.sel = (this.sel + 1) % n; audio.play('move'); }
       if (m.pause || (m.back && !m.pause)) { this.paused = false; audio.play('pause'); return; }
       if (m.confirm || (m.click && hov >= 0)) this.choose();
       return;
@@ -87,7 +90,11 @@ export class FightScene {
     if (this.battle.phase === 'matchEnd' && ++this.endT > 40) {
       this.tracker?.end({ winner: this.battle.matchWinner?.side ?? -1, rounds: this.battle.round });
       this.tracker = null;
-      this.game.go('results', { ...this.params, winner: this.battle.matchWinner?.side ?? -1, stats: this.battle.stats });
+      const winner = this.battle.matchWinner?.side ?? -1;
+      if (this.params.mode === 'tournament') {
+        const outcome = winner < 0 ? 'draw' : winner === 0 ? 'win' : 'lose';
+        this.game.go('bracket', { tournament: this.params.tournament, arenaChoice: this.params.arenaChoice, outcome });
+      } else this.game.go('results', { ...this.params, winner, stats: this.battle.stats });
     }
   }
 
@@ -95,11 +102,12 @@ export class FightScene {
     const { audio } = this.game;
     audio.play('select');
     const p = this.params;
-    switch (this.sel) {
-      case 0: this.paused = false; break;
-      case 1: this.enter(p); break;
-      case 2: this.game.go('select', { mode: p.mode, arena: p.arenaChoice ?? p.arena, difficulty: p.difficulty }); break;
-      case 3: this.game.go('mode'); break;
+    switch (this.pauseItems[this.sel]) {
+      case 'RESUME': this.paused = false; break;
+      case 'RESTART':
+      case 'RESTART MATCH': this.enter(p); break;
+      case 'CHARACTER SELECT': this.game.go('select', { mode: p.mode, arena: p.arenaChoice ?? p.arena, difficulty: p.difficulty }); break;
+      default: this.game.go('mode'); // MAIN MENU / QUIT TOURNAMENT
     }
   }
 
@@ -148,7 +156,7 @@ export class FightScene {
       dim(g, 0.62);
       glass(g, W / 2 - 100, 62, 200, 130, { accent: '#ffd23f' });
       drawText(g, 'PAUSED', W / 2, 72, { scale: 3.6, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
-      this.rects = drawMenu(g, PAUSE_ITEMS, this.sel, W / 2, 108, this.t, { gap: 21, scale: 1, width: 150 });
+      this.rects = drawMenu(g, this.pauseItems, this.sel, W / 2, 108, this.t, { gap: 21, scale: 1, width: 150 });
     }
   }
 }

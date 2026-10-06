@@ -133,6 +133,12 @@ export const CPU_DIFFICULTY = {
     reaction: 7, tick: [7, 13], blockChance: 0.82, attackRate: 1.3,
     punishChance: 0.85, specialChance: 0.95, antiAir: 0.65, sloppiness: 0.02,
   },
+  // Harder than hard: reacts a few frames after you commit, blocks and punishes almost everything,
+  // jumps out of grabs, never wastes a move and fires the special the moment it can land.
+  extreme: {
+    reaction: 4, tick: [3, 7], blockChance: 0.9, attackRate: 1.8,
+    punishChance: 1.0, specialChance: 1.0, antiAir: 0.85, sloppiness: 0,
+  },
 };
 
 /** Pixel-art head size produced by the photo pipeline. */

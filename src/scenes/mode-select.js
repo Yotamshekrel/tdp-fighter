@@ -2,9 +2,9 @@
 // Menus (one scene, a stack of pages):
 //
 //   MAIN      PLAY / SETTINGS
-//   PLAY      1P VS CPU / 1P VS 2P
+//   PLAY      1P VS CPU / 1P VS 2P / TOURNAMENT
 //   ARENA     pick a stage (with preview) or RANDOM
-//   LEVEL     CPU difficulty (1P vs CPU only)    -> character select
+//   LEVEL     CPU difficulty (1P vs CPU and tournament)    -> character select
 //   SETTINGS  SOUND ON/OFF / HOW TO PLAY
 //   HELP      controls + rules
 //
@@ -19,10 +19,11 @@ import { COLORS, glass, glow, rrPath, vgrad, easeOut, clamp01, menuBackdrop } fr
 import { postProcess } from '../render/post.js';
 import { drawMenu, hitTest, heading, hints } from './ui.js';
 
-const DIFFS = [
+export const DIFFS = [
   { id: 'easy', label: 'EASY', desc: 'Slow reactions, rarely blocks. Good for learning.', color: '#5dff8a' },
   { id: 'normal', label: 'NORMAL', desc: 'Blocks about half the time and punishes mistakes.', color: '#ffd23f' },
   { id: 'hard', label: 'HARD', desc: 'Fast reactions, blocks a lot, always uses the special.', color: '#ff5a4e' },
+  { id: 'extreme', label: 'EXTREME', desc: 'Near-instant reflexes. Blocks almost everything, punishes every slip. Good luck.', color: '#e04dff' },
 ];
 const TITLES = { main: 'MAIN MENU', play: 'PLAY', arena: 'SELECT ARENA', level: 'CPU DIFFICULTY', settings: 'SETTINGS', help: 'HOW TO PLAY' };
 const SHOW_FRAMES = 260; // how long each fighter of the line-up stays in front
@@ -62,7 +63,7 @@ export class ModeSelectScene {
   items() {
     switch (this.page) {
       case 'main': return ['PLAY', 'SETTINGS'];
-      case 'play': return ['1P VS CPU', '1P VS 2P'];
+      case 'play': return ['1P VS CPU', '1P VS 2P', 'TOURNAMENT'];
       case 'arena': return ['RANDOM', ...ARENAS.map((a) => a.name.toUpperCase())];
       case 'level': return DIFFS.map((d) => d.label);
       case 'settings': return [`SOUND: ${this.game.audio.muted ? 'OFF' : 'ON'}`, `ANNOUNCER: ${this.game.audio.announcer ? 'ON' : 'OFF'}`, 'HOW TO PLAY'];
@@ -74,7 +75,7 @@ export class ModeSelectScene {
     const s = this.game.settings;
     if (page === 'arena') return Math.max(0, ['random', ...ARENAS.map((a) => a.id)].indexOf(s.stage));
     if (page === 'level') return Math.max(0, DIFFS.findIndex((d) => d.id === s.difficulty));
-    if (page === 'play') return this.mode === '2p' ? 1 : 0;
+    if (page === 'play') return this.mode === '2p' ? 1 : this.mode === 'tournament' ? 2 : 0;
     return 0;
   }
 
@@ -118,12 +119,12 @@ export class ModeSelectScene {
       case 'main':
         return this.push(this.sel === 0 ? 'play' : 'settings');
       case 'play':
-        this.mode = this.sel === 0 ? '1p' : '2p';
+        this.mode = ['1p', '2p', 'tournament'][this.sel];
         return this.push('arena');
       case 'arena':
         settings.stage = this.sel === 0 ? 'random' : ARENAS[this.sel - 1].id;
         this.game.saveSettings();
-        if (this.mode === '1p') return this.push('level');
+        if (this.mode !== '2p') return this.push('level');
         return this.startSelect();
       case 'level':
         settings.difficulty = DIFFS[this.sel].id;
@@ -177,7 +178,7 @@ export class ModeSelectScene {
     }
     heading(g, TITLES[this.page], 34, 40, { scale: 3.2 });
     if (this.stack.length > 2) {
-      const crumb = this.stack.slice(1).map((p) => (p === 'play' ? (this.mode === '1p' ? '1P VS CPU' : '1P VS 2P') : TITLES[p])).join('   ▶   ');
+      const crumb = this.stack.slice(1).map((p) => (p === 'play' ? { '1p': '1P VS CPU', '2p': '1P VS 2P', tournament: 'TOURNAMENT' }[this.mode] : TITLES[p])).join('   ▶   ');
       drawText(g, crumb, 34, 74, { scale: 1.1, color: COLORS.dim });
     }
 
@@ -243,7 +244,7 @@ export class ModeSelectScene {
     glass(g, 250, 92, 196, 112, { accent: d.color });
     drawText(g, d.label, 266, 104, { scale: 3.4, color: [d.color, '#ffffff'], outline: 'rgba(5,6,24,0.85)', glow: d.color });
     // intensity pips
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < DIFFS.length; i++) {
       rrPath(g, 266 + i * 22, 140, 18, 6, 3);
       g.fillStyle = i <= this.sel ? d.color : 'rgba(255,255,255,0.12)';
       g.fill();
@@ -317,6 +318,7 @@ export class ModeSelectScene {
       'JUMP + ATTACK = AIR KICK (BLOCK IT STANDING)',
       'DEFEND BLOCKS MOST DAMAGE, BUT YOU CAN\'T MOVE',
       'HIT AND GET HIT TO FILL THE SPECIAL METER',
+      'TOURNAMENT: 8 FIGHTERS, QUARTER-FINALS TO THE FINAL',
       'BEST OF 3 ROUNDS.  ESC = PAUSE.  M = MUTE',
     ];
     tips.forEach((tp, i) => drawText(g, tp, W / 2, 168 + i * 12, { scale: 1.15, align: 'center', color: i < 1 ? '#5ad0ff' : COLORS.text }));

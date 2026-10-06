@@ -114,6 +114,11 @@ export class VsScene {
       glow(g, W / 2, H / 2 - 6, 90, '#ffd23f', 0.5 * k);
       drawText(g, 'VS', W / 2 + shake, H / 2 - 6 - (7 * s) / 2, { scale: s, align: 'center', color: ['#ffffff', '#fff3a0', '#ffd23f', '#ff4d2e'], outline: '#1a0608', glow: '#ff8a2a', alpha: k });
     }
+    // tournament: which round this is
+    if (this.params.tournament) {
+      const k = easeOut(clamp01((t - 10) / 14));
+      drawText(g, this.params.tournament.roundLabel, W / 2, 8, { scale: 2.4, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.92)', glow: '#ffb62e', alpha: k });
+    }
     // stage banner
     const sk = easeOut(clamp01((t - 22) / 14));
     g.save();

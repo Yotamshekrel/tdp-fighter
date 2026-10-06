@@ -22,9 +22,16 @@ host. A small service worker caches the build so it keeps working offline.
 ## Menus
 
 - **Title** → **Main menu**: `PLAY` or `SETTINGS`.
-- **Play**: choose `1P VS CPU` or `1P VS 2P`. Then pick an arena (or Random)
-  from a live preview. For 1P vs CPU you also pick the difficulty (Easy,
-  Normal or Hard). Then character select, the VS screen, and the fight.
+- **Play**: choose `1P VS CPU`, `1P VS 2P` or `TOURNAMENT`. Then pick an arena (or Random)
+  from a live preview. For 1P vs CPU and the tournament you also pick the difficulty (Easy,
+  Normal, Hard or Extreme). Then character select, the VS screen, and the fight.
+- **Tournament**: pick your fighter; 7 random rivals complete an 8-fighter bracket.
+  Quarter-finals (4 games), semi-finals (2 games), then the final. You play your own
+  games; the CPU-vs-CPU games are played for you and revealed on the bracket graph
+  (Enter skips the reveal). Lose and you are out (the rest of the bracket still plays out);
+  a drawn match is replayed. Code: `src/game/tournament.js` (logic), `src/scenes/bracket.js` (the graph).
+- **Extreme** is harder than Hard: near-instant reactions, blocks ~90% of attacks, punishes
+  every whiff and jumps out of grabs. Tuned in `CPU_DIFFICULTY` in `src/config.js`.
 - **Settings**: `SOUND`, `ANNOUNCER` (the spoken round calls) and `HOW TO PLAY`.
 - Back (Esc / X) always goes up one level.
 - Every match (including restarts and rematches) opens with a **Get Ready**
@@ -137,7 +144,8 @@ offline and reports levels; click to listen).
 npm test                         # all of the below
 node scripts/test-specials.mjs   # every special vs idle / blocking dummy at 4 ranges
 node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 18 (crash / NaN checks)
-node scripts/test-difficulty.mjs # easy < normal < hard win rates
+node scripts/test-difficulty.mjs # easy < normal < hard < extreme win rates
+node scripts/test-tournament.mjs # whole tournaments, headless (bracket logic checks)
 ```
 
 Every special deals 22 damage on hit, or 5.5 when blocked. There are two

@@ -208,7 +208,7 @@ function render(d) {
 
   dailyChart(d.daily);
   hourChart(d.hourly);
-  bars('modes', d.modes, { label: (r) => (r.label === '1p' ? '1 Player vs CPU' : r.label === '2p' ? '2 Players' : nice(r.label)) });
+  bars('modes', d.modes, { label: (r) => (r.label === '1p' ? '1 Player vs CPU' : r.label === '2p' ? '2 Players' : r.label === 'tournament' ? 'Tournament' : nice(r.label)) });
   bars('difficulties', d.difficulties.filter((r) => r.label !== 'unknown' && r.label !== 'null'));
   bars('arenas', d.arenas);
   $('vsCpu').innerHTML = d.vsCpu.length ? d.vsCpu.map((r) => `
@@ -229,8 +229,8 @@ function render(d) {
 
   table('recentMatches', [{ t: 'When' }, { t: 'Match' }, { t: 'Result' }, { t: 'Length', r: 1 }],
     d.recentMatches.map(({ ts, data: m }) => {
-      const res = m.winner === -1 ? 'Draw' : m.mode === '1p' ? (m.winner === 0 ? '<span class="win">Human won</span>' : '<span class="lose">CPU won</span>') : `P${m.winner + 1} won`;
-      return `<tr><td>${ago(ts)}</td><td>${nice(m.p1)} vs ${nice(m.p2)} <span class="tag">${m.mode === '2p' ? '2P' : nice(m.difficulty)}</span></td><td>${res}</td><td class="num-r">${m.seconds != null ? dur(m.seconds) : '–'}</td></tr>`;
+      const res = m.winner === -1 ? 'Draw' : m.mode !== '2p' ? (m.winner === 0 ? '<span class="win">Human won</span>' : '<span class="lose">CPU won</span>') : `P${m.winner + 1} won`;
+      return `<tr><td>${ago(ts)}</td><td>${nice(m.p1)} vs ${nice(m.p2)} <span class="tag">${m.mode === '2p' ? '2P' : (m.mode === 'tournament' ? '🏆 ' : '') + nice(m.difficulty)}</span></td><td>${res}</td><td class="num-r">${m.seconds != null ? dur(m.seconds) : '–'}</td></tr>`;
     }));
 }
 

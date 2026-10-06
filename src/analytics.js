@@ -56,7 +56,7 @@ export function trackVisit() {
 
 /** Starts timing a match; call `.end(...)` when it finishes (an unfinished match counts as abandoned). */
 export function trackMatch({ mode, difficulty, arena, chars }) {
-  const info = { mode, difficulty: mode === '1p' ? difficulty : null, arena, p1: chars[0]?.id, p2: chars[1]?.id };
+  const info = { mode, difficulty: mode === '1p' || mode === 'tournament' ? difficulty : null, arena, p1: chars[0]?.id, p2: chars[1]?.id };
   const id = uid();
   const t0 = performance.now();
   send('match_start', info, id);

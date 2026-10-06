@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         WHERE ch IS NOT NULL GROUP BY ch`),
       rows(`SELECT COALESCE(data->>'difficulty', 'unknown') AS label, count(*)::int AS played,
           count(*) FILTER (WHERE data->>'winner' = '0')::int AS won
-        FROM events WHERE type = 'match_end' AND data->>'mode' = '1p' GROUP BY 1 ORDER BY 1`),
+        FROM events WHERE type = 'match_end' AND data->>'mode' IN ('1p', 'tournament') GROUP BY 1 ORDER BY 1`),
       devicesBy('country'), devicesBy('city'), devicesBy('browser'),
       devicesBy('os'), devicesBy('device'), devicesBy('host'),
       rows(`SELECT ts, left(device_id, 6) AS device, country, city, browser, os, device AS kind, host,

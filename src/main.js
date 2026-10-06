@@ -14,6 +14,7 @@ import { CharSelectScene } from './scenes/char-select.js';
 import { VsScene } from './scenes/vs.js';
 import { FightScene } from './scenes/fight.js';
 import { ResultsScene } from './scenes/results.js';
+import { BracketScene } from './scenes/bracket.js';
 import { drawText } from './render/font.js';
 import { loadFonts } from './render/fonts.js';
 import { trackVisit } from './analytics.js';
@@ -79,6 +80,7 @@ const scenes = {
   vs: new VsScene(game),
   fight: new FightScene(game),
   results: new ResultsScene(game),
+  bracket: new BracketScene(game),
 };
 
 // Audio may only start after a user gesture.

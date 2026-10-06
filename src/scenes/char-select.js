@@ -3,6 +3,7 @@
 import { VIEW } from '../config.js';
 import { CHARACTERS } from '../data/characters.js';
 import { randInt, pick } from '../game/rng.js';
+import { Tournament } from '../game/tournament.js';
 import { ARENAS } from '../render/backgrounds.js';
 import { drawText, wrap, textWidth } from '../render/font.js';
 import { drawFighterArt, drawPortrait } from '../render/sprites.js';
@@ -29,7 +30,7 @@ export class CharSelectScene {
     this.t = 0;
     this.cur = [...this.last];
     this.locked = [false, false];
-    this.stage = mode === '2p' ? 'both' : 'p1'; // 'p1' -> 'cpu' for 1P / demo
+    this.stage = mode === '2p' ? 'both' : 'p1'; // 'p1' -> 'cpu' for 1P / demo (a tournament only picks P1)
     this.doneT = 0;
     this.lockT = [0, 0];
     this.moveT = [0, 0]; // when each cursor last moved (for the figure swap animation)
@@ -122,6 +123,10 @@ export class CharSelectScene {
       return;
     }
     drive(i, { ...m, back: false });
+    if (this.locked[0] && this.stage === 'p1' && this.mode === 'tournament') {
+      this.doneT = 1;
+      return;
+    }
     if (this.locked[0] && this.stage === 'p1') {
       this.stage = 'cpu';
       if (this.cur[1] === this.cur[0]) this.cur[1] = (this.cur[0] + 1) % CHARACTERS.length;
@@ -131,11 +136,15 @@ export class CharSelectScene {
   }
 
   backToMenu() {
-    this.game.go('mode', { page: this.mode === '1p' ? 'level' : 'arena', mode: this.mode });
+    this.game.go('mode', { page: this.mode === '2p' ? 'arena' : 'level', mode: this.mode });
   }
 
   start() {
     this.last = [...this.cur];
+    if (this.mode === 'tournament') {
+      const tour = new Tournament(CHARACTERS[this.cur[0]], CHARACTERS, this.difficulty);
+      return this.game.go('bracket', { tournament: tour, arenaChoice: this.arena });
+    }
     this.game.go('vs', {
       chars: [CHARACTERS[this.cur[0]], CHARACTERS[this.cur[1]]],
       mode: this.mode,

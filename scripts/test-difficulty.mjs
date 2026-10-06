@@ -21,6 +21,8 @@ function duel(dA, dB) {
   }
   console.log(`${dA.padEnd(6)} vs ${dB.padEnd(6)}: ${dA} wins ${winsA}/${N} (${Math.round((winsA / N) * 100)}%), draws ${draws}`);
 }
+duel('extreme', 'hard');
+duel('extreme', 'normal');
 duel('hard', 'easy');
 duel('hard', 'normal');
 duel('normal', 'easy');
