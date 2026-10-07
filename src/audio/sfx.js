@@ -15,7 +15,7 @@ const brass = (c, d, t, notes, o = {}) => notes.forEach((f) => tone(c, d, t, {
 export const WET = {
   ko: 0.5, smash: 0.3, boom: 0.4, special: 0.35, fight: 0.4, round: 0.35, win: 0.35, vs: 0.3, magic: 0.45, jackpot: 0.3, clang: 0.3,
   cheer: 0.25, wave: 0.3, splash: 0.2, boomwave: 0.35, clash: 0.3, laser: 0.2, grow: 0.25, shrink: 0.2, select: 0.2, sing: 0.3, hum: 0.1,
-  move: 0.04, back: 0.06, pause: 0.12, punch: 0.06, kick: 0.07, swing: 0.04, jump: 0.05, land: 0.04, slap: 0.04, whoosh: 0.1,
+  fatality: 0.5, gore: 0.15, slice: 0.08, crack: 0.06, flames: 0.15, move: 0.04, back: 0.06, pause: 0.12, punch: 0.06, kick: 0.07, swing: 0.04, jump: 0.05, land: 0.04, slap: 0.04, whoosh: 0.1,
 };
 
 export const SFX = {
@@ -244,5 +244,36 @@ export const SFX = {
     tone(c, d, t, { type: 'sine', f0: 95, f1: 40, dur: 0.3, vol: 0.55 });
     noise(c, d, t, { dur: 0.22, vol: 0.28, f0: 420, f1: 120 });
     ring(c, d, t, 196, { dur: 0.3, vol: 0.05 });
+  },
+
+  // ---- grown-up mode ----
+  slice: (c, d, t) => {
+    sweep(c, d, t, { dur: 0.16, vol: 0.5, f0: 1600, f1: 7000, q: 1 });
+    noise(c, d, t, { dur: 0.05, vol: 0.3, filter: 'highpass', f0: 5000 });
+    noise(c, d, t, { dur: 0.22, vol: 0.34, filter: 'bandpass', f0: 520, f1: 160, q: 0.9, delay: 0.05 });
+    thump(c, d, t, { f0: 150, f1: 50, dur: 0.18, vol: 0.4, delay: 0.05 });
+  },
+  crack: (c, d, t) => {
+    noise(c, d, t, { dur: 0.03, vol: 0.5, filter: 'highpass', f0: 3000 });
+    tone(c, d, t, { type: 'triangle', f0: 900, f1: 260, dur: 0.07, vol: 0.3 });
+    thump(c, d, t, { f0: 200, f1: 70, dur: 0.1, vol: 0.4 });
+  },
+  gore: (c, d, t) => {
+    noise(c, d, t, { dur: 0.3, vol: 0.5, filter: 'bandpass', f0: 650, f1: 180, q: 0.8 });
+    tone(c, d, t, { type: 'sine', f0: 150, f1: 48, dur: 0.28, vol: 0.45 });
+    noise(c, d, t, { dur: 0.1, vol: 0.2, filter: 'highpass', f0: 3800, delay: 0.04 });
+    thump(c, d, t, { f0: 110, f1: 38, dur: 0.3, vol: 0.5 });
+  },
+  flames: (c, d, t) => {
+    noise(c, d, t, { dur: 1.0, vol: 0.3, filter: 'bandpass', f0: 1300, f1: 380, q: 0.6, attack: 0.2 });
+    noise(c, d, t, { dur: 0.9, vol: 0.12, filter: 'highpass', f0: 5000, attack: 0.3 });
+  },
+  fatality: (c, d, t) => {
+    thump(c, d, t, { f0: 90, f1: 28, dur: 1.0, vol: 0.85 });
+    noise(c, d, t, { dur: 1.0, vol: 0.4, f0: 3200, f1: 60 });
+    tone(c, d, t, { type: 'sawtooth', f0: 58, f1: 40, dur: 1.4, vol: 0.18, filter: { f0: 500, f1: 90, q: 2 } });
+    ring(c, d, t, 110, { dur: 1.8, vol: 0.09 });
+    ring(c, d, t, 165, { dur: 1.5, vol: 0.06, delay: 0.02 });
+    ring(c, d, t, 233, { dur: 1.2, vol: 0.04, delay: 0.04 });
   },
 };

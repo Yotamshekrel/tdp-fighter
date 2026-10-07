@@ -618,7 +618,10 @@ function tintCanvas(src, tint) {
   for (let i = 0; i < d.length; i++) {
     const p = d[i];
     if (!p || p === OUTLINE) continue;
-    if (tint === 'white') d[i] = WHITE;
+    if (tint.startsWith('hurt')) {
+      const k = Number(tint.slice(4)) / 4, grey = (R(p) + Gc(p) + Bch(p)) / 3;
+      d[i] = pack((R(p) + (grey - R(p)) * k * 0.55) * (1 - k * 0.2), (Gc(p) + (grey - Gc(p)) * k * 0.55) * (1 - k * 0.2), (Bch(p) + (grey - Bch(p)) * k * 0.55) * (1 - k * 0.2));
+    } else if (tint === 'white') d[i] = WHITE;
     else if (tint === 'ice') d[i] = pack(R(p) * 0.45 + 120, Gc(p) * 0.45 + 160, Bch(p) * 0.4 + 170);
   }
   g.putImageData(id, 0, 0);

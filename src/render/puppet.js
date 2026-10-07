@@ -300,7 +300,8 @@ export function tintHi(src, tint) {
   const g = c.getContext('2d');
   g.drawImage(src, 0, 0);
   g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = tint === 'white' ? '#ffffff' : 'rgba(120, 190, 255, 0.62)';
+  // (grown-up mode: a battered fighter gets a grey, sickly wash; `hurtN` = N quarters of the way to half dead)
+  g.fillStyle = tint === 'white' ? '#ffffff' : tint.startsWith('hurt') ? `rgba(120, 112, 130, ${(Number(tint.slice(4)) * 0.1).toFixed(2)})` : 'rgba(120, 190, 255, 0.62)';
   g.fillRect(0, 0, c.width, c.height);
   return c;
 }

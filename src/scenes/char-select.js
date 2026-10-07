@@ -151,7 +151,7 @@ export class CharSelectScene {
   }
 
   backToMenu() {
-    this.game.go('mode', { page: this.mode === '2p' ? 'arena' : 'level', mode: this.mode });
+    this.game.go('mode', { page: 'grownup', mode: this.mode });
   }
 
   start() {

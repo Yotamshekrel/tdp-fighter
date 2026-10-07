@@ -3,6 +3,7 @@
 // headless), drawn as smooth, glowing shapes when rendering.
 // ---------------------------------------------------------------------------
 import { rand, randRange, pick } from '../game/rng.js';
+import { VIEW } from '../config.js';
 import { drawText, textWidth } from './font.js';
 import { rrPath } from './ui-kit.js';
 
@@ -13,6 +14,10 @@ export class Fx {
   constructor() {
     this.parts = [];
     this.texts = [];
+    // Grown-up mode: blood that has landed on the floor. Lives for the whole match (clear() leaves it alone).
+    this.pending = []; // stains not yet painted
+    this.layer = null; // the floor's blood, painted as it lands
+    this.pools = [];
   }
 
   clear() {
@@ -22,10 +27,12 @@ export class Fx {
 
   /** Add one particle. */
   spawn(kind, x, y, o = {}) {
-    if (this.parts.length > 700) return;
+    if (this.parts.length > 1300) return;
     const life = o.life ?? 30;
     this.parts.push({
       kind, x, y,
+      land: o.land ?? null, // 'stain' = leaves a mark on the floor and vanishes, 'bounce' = tumbles to rest
+      floor: o.land ? VIEW.GROUND_Y + 1 + rand() * 17 : 0,
       vx: o.vx ?? 0, vy: o.vy ?? 0, g: o.g ?? 0, drag: o.drag ?? 1,
       life, max: life,
       color: o.color ?? '#fff',
@@ -66,6 +73,17 @@ export class Fx {
     });
   }
 
+  /** A mark of blood on the floor (painted once into a picture of the floor, see drawStains). */
+  stain(x, y, size = 2) {
+    if (typeof document === 'undefined') return; // headless simulation: nothing to draw on
+    if (this.pending.length < 400) this.pending.push({ x, y, w: size * (1.1 + rand() * 1.6), a: 0.55 + rand() * 0.35, k: rand() });
+  }
+
+  /** A pool that spreads slowly under something bleeding (x, with a final radius r). */
+  pool(x, r, y = VIEW.GROUND_Y + 5) {
+    this.pools.push({ x, y, r: 2, rmax: r });
+  }
+
   update() {
     const P = this.parts;
     for (let i = P.length - 1; i >= 0; i--) {
@@ -77,14 +95,58 @@ export class Fx {
       p.y += p.vy;
       p.size += p.grow;
       p.a += p.spin;
+      if (p.land && p.vy > 0 && p.y >= p.floor) {
+        if (p.land === 'stain') {
+          this.stain(p.x, p.floor, p.size);
+          P.splice(i, 1);
+          continue;
+        }
+        p.y = p.floor;
+        p.vy *= -0.32;
+        p.vx *= 0.55;
+        p.spin *= 0.4;
+        if (Math.abs(p.vy) < 0.7) { p.vy = 0; p.vx = 0; p.g = 0; p.spin = 0; p.life = Math.max(p.life, 80); p.land = null; }
+      }
       if (--p.life <= 0) P.splice(i, 1);
     }
+    for (const q of this.pools) q.r += (q.rmax - q.r) * 0.025;
     const T = this.texts;
     for (let i = T.length - 1; i >= 0; i--) {
       const t = T[i];
       t.y += t.vy;
       t.vy *= 0.94;
       if (--t.life <= 0) T.splice(i, 1);
+    }
+  }
+
+  /** The blood on the floor (drawn under the fighters). Stains are painted into one picture once, then it is just one draw. */
+  drawStains(ctx) {
+    if (this.pending.length) {
+      if (!this.layer) {
+        this.layer = document.createElement('canvas');
+        this.layer.width = VIEW.W * VIEW.SCALE;
+        this.layer.height = VIEW.H * VIEW.SCALE;
+      }
+      const lg = this.layer.getContext('2d');
+      lg.setTransform(VIEW.SCALE, 0, 0, VIEW.SCALE, 0, 0);
+      for (const s of this.pending) {
+        lg.fillStyle = s.k > 0.5 ? `rgba(112, 8, 22, ${s.a})` : `rgba(150, 12, 30, ${s.a})`;
+        lg.beginPath();
+        lg.ellipse(s.x, s.y, s.w, s.w * 0.3, 0, 0, 6.3);
+        lg.fill();
+      }
+      this.pending.length = 0;
+    }
+    if (this.layer) ctx.drawImage(this.layer, 0, 0, VIEW.W, VIEW.H);
+    for (const q of this.pools) {
+      ctx.fillStyle = 'rgba(92, 6, 18, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(q.x, q.y, q.r, q.r * 0.24, 0, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(150, 12, 30, 0.55)';
+      ctx.beginPath();
+      ctx.ellipse(q.x - q.r * 0.1, q.y - q.r * 0.03, q.r * 0.72, q.r * 0.15, 0, 0, 6.3);
+      ctx.fill();
     }
   }
 
@@ -355,6 +417,119 @@ function drawParticle(ctx, p) {
     case 'glow':
       puff(ctx, x, y, p.size * 1.6, p.color, k * 0.7);
       break;
+    case 'blood': {
+      // a streak along the way it is travelling
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, k * 3);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = Math.max(0.7, p.size * 0.62);
+      ctx.beginPath();
+      ctx.moveTo(x - p.vx * 1.1, y - p.vy * 1.1);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'bloodmist':
+      puff(ctx, x, y, p.size * (1.2 + (1 - k)), '#b3101f', Math.min(1, k * 1.4) * 0.5);
+      break;
+    case 'chunk': {
+      // a ragged lump of meat
+      const r = Math.max(0.8, p.size);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(p.a);
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * 6.283, rr = r * (0.65 + 0.45 * Math.abs(Math.sin(i * 2.7 + p.max)));
+        ctx[i ? 'lineTo' : 'moveTo'](Math.cos(ang) * rr, Math.sin(ang) * rr);
+      }
+      ctx.closePath();
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = '#3a0610';
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'bone': {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(p.a);
+      ctx.fillStyle = '#f1e6c8';
+      ctx.strokeStyle = '#7a6c4e';
+      ctx.lineWidth = 0.4;
+      const l = p.size * 1.6;
+      rrPath(ctx, -l, -p.size * 0.28, l * 2, p.size * 0.56, p.size * 0.28);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-l, 0, p.size * 0.42, 0, 6.3);
+      ctx.arc(l, 0, p.size * 0.42, 0, 6.3);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'shard': {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(p.a);
+      ctx.globalAlpha = Math.min(1, k * 2);
+      ctx.beginPath();
+      ctx.moveTo(-p.size * 0.5, -p.size * 1.3);
+      ctx.lineTo(p.size * 0.7, 0);
+      ctx.lineTo(-p.size * 0.5, p.size * 1.1);
+      ctx.closePath();
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'fire': {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const r = p.size * (0.7 + k * 0.7);
+      puff(ctx, x, y, r * 1.6, k > 0.55 ? '#ffb02e' : '#ff3a14', Math.min(1, k * 1.4) * 0.85);
+      puff(ctx, x, y, r * 0.8, '#fff0a0', k * 0.7);
+      ctx.restore();
+      break;
+    }
+    case 'ember':
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, k * 2);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x - 0.5, y - 0.5, 1.2, 1.2);
+      ctx.restore();
+      break;
+    case 'ash':
+      ctx.globalAlpha = Math.min(1, k * 1.6) * 0.8;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x, y, 1.6, 1.2);
+      ctx.globalAlpha = 1;
+      break;
+    case 'bug': {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 1.9, 1.15, 0, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 0.4;
+      ctx.beginPath();
+      ctx.moveTo(-0.6, -1.9); ctx.lineTo(0.6, 1.9);
+      ctx.moveTo(0.6, -1.9); ctx.lineTo(-0.6, 1.9);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
     default:
       ctx.fillStyle = p.color;
       ctx.fillRect(x, y, 2, 2);

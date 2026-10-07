@@ -280,7 +280,7 @@ export function drawAnnounce(g, ann, frame) {
   if (!ann) return;
   const t = ann.t;
   const cy = 112;
-  const band = (h, a, c0 = 'rgba(6,8,26,0.0)', c1 = 'rgba(6,8,26,0.78)') => {
+  const band = (h, a, c0 = 'rgba(6,8,26,0.0)', c1 = 'rgba(6,8,26,0.78)', cy = 112) => {
     const gr = g.createLinearGradient(0, 0, W, 0);
     gr.addColorStop(0, c0);
     gr.addColorStop(0.2, c1);
@@ -329,6 +329,36 @@ export function drawAnnounce(g, ann, frame) {
     band(78, 0.75 * k, 'rgba(70,0,10,0)', 'rgba(30,0,8,0.85)');
     glow(g, W / 2, cy, 170, '#ff2a2a', 0.4 * k);
     drawText(g, ann.text, W / 2, cy - (7 * s) / 2, { scale: s, align: 'center', color: ['#ffffff', '#ffb0a8', '#ff3b30', '#a00010'], outline: '#1a0206', glow: '#ff2a2a' });
+  } else if (ann.kind === 'finish' || ann.kind === 'fatality') {
+    // up at the top, clear of the fighters
+    const fat = ann.kind === 'fatality';
+    const fy = 56;
+    if (fat && (t < 5 || (t < 30 && t % 9 < 4))) {
+      g.fillStyle = 'rgba(255, 20, 20, 0.24)';
+      g.fillRect(0, 0, W, H);
+    }
+    const k = clamp01(t / 10);
+    const fade = fat ? 1 - clamp01((t - 70) / 24) : 1;
+    const s = (fat ? 5.8 : 4.6) * (1 + (1 - easeOutBack(k)) * 0.55) * (fat ? 1 : 1 + Math.sin(t * 0.28) * 0.03);
+    const tw = textWidth(ann.text, s);
+    const top = fy - (7 * s) / 2;
+    band(fat ? 60 : 50, 0.85 * k * fade, 'rgba(60,0,0,0)', 'rgba(24,0,6,0.9)', fy);
+    glow(g, W / 2, fy, 150, '#ff1e12', 0.4 * k * fade);
+    g.save();
+    if (fat && t < 40) g.translate((Math.random() - 0.5) * (40 - t) * 0.1, (Math.random() - 0.5) * (40 - t) * 0.1);
+    drawText(g, ann.text, W / 2, top, { scale: s, align: 'center', color: fat ? ['#ffffff', '#ff8a7a', '#e0141c', '#7a0010'] : ['#fff3b0', '#ffb02e', '#ff3b1e', '#8a0010'], outline: '#1a0206', glow: '#ff2a2a', alpha: fade });
+    // blood running down from the letters
+    g.fillStyle = `rgba(180, 12, 28, ${0.95 * fade})`;
+    for (let i = 0; i < 11; i++) {
+      const dx = W / 2 - tw / 2 + ((i + 0.5) * tw) / 11 + ((i * 5) % 3) - 1;
+      const len = clamp01((t - 6 - i * 2.2) / 34) * (4 + ((i * 7) % 9) * 1.2);
+      if (len <= 0) continue;
+      g.fillRect(dx, top + 7 * s - 2, 1.4, len + 2);
+      g.beginPath();
+      g.arc(dx + 0.7, top + 7 * s + len, 1.2, 0, 6.3);
+      g.fill();
+    }
+    g.restore();
   } else if (ann.kind === 'wins') {
     const k = clamp01(t / 14);
     const s = textWidth(ann.text, 5) > W - 30 ? 3.6 : 5;

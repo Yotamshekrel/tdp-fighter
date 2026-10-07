@@ -24,7 +24,8 @@ host. A small service worker caches the build so it keeps working offline.
 - **Title** → **Main menu**: `PLAY` or `SETTINGS`.
 - **Play**: choose `1P VS CPU`, `1P VS 2P` or `TOURNAMENT`. Then pick an arena (or Random)
   from a live preview. For 1P vs CPU and the tournament you also pick the difficulty (Easy,
-  Normal, Hard or Extreme). Then character select, the VS screen, and the fight.
+  Normal, Hard or Extreme). Then comes **Grown-up mode?** (`NO` by default, asked again for every
+  new game), then character select, the VS screen, and the fight.
 - **Tournament**: pick your fighter; 7 random rivals complete an 8-fighter bracket.
   Quarter-finals (4 games), semi-finals (2 games), then the final. You play your own
   games; the CPU-vs-CPU games are played for you and revealed on the bracket graph
@@ -37,6 +38,37 @@ host. A small service worker caches the build so it keeps working offline.
 - Every match (including restarts and rematches) opens with a **Get Ready**
   card that shows that mode's buttons and the fighter's special. Press Attack
   to start, or it continues on its own after 6 seconds.
+
+## Grown-up mode
+
+Choose `YES` on the **Grown-up mode?** screen (after the difficulty screen) for the 18+ version of the
+fight. `NO` is the normal game and is always the default.
+
+- **Blood**: every hit sprays blood that lands as stains on the floor, and leaves cuts and bruises on the fighter.
+- **Battered fighters**: the lower the health bar, the paler, more slumped and more bloody a fighter looks
+  (black eye, cut brow, soaked clothes), and they drip as they fight. A fighter who is knocked out lies in a pool.
+- **Fatalities**: the knock-out that decides the match (not a timeout) ends with "FINISH HIM!", then the
+  winner performs a finishing move that is different for every fighter and tied to their special:
+
+| Fighter | Fatality | Fighter | Fatality |
+|---|---|---|---|
+| Yotam | LASIK: the laser eyes slice the victim into slabs | Nadav | JACKPOT: a slot machine, then a rain of coins buries them |
+| Gal | BABY BONK: three bonks flatten them and pop the head | Noa | OFF WITH HIS HEAD: a baguette guillotine |
+| Ofir | BACK IN MY DAY: fifty years pass, then the cane | Ido | GIANT STOMP: grows and squashes them flat |
+| Ofek | CAPTAIN'S CUP: the trophy boomerang takes the head off, then comes back for the waist | Shay | MIC DROP: sound waves burst the head |
+| Ayoub | ABRACADABRA: levitated and quartered by magic | Nethanel | DEATH BY POWERPOINT: slides fall like blades |
+| Eshel | TALK TO THE HANDS: the head is slapped until it spins off | Rashida | YOU'RE LATE!: a t-shirt cannon blows out the middle |
+| Ben | SPRINT FINISH: runs straight through them | Noa T. | PLE 99%: the windows close in |
+| Dvir | COWABUNGA: a wave of blood | Yair | ABSOLUTE ZERO: frozen solid, then the AC drops |
+| Hadar | TEQUILA TIME: soaked, then lit | Yovel | BUG PARTY: eaten down to the bones |
+| Mor | SPINE OUT: head and spine ripped out together | Yaara | BEAR HUG: crushed until they burst |
+| Maya | SUGAR RUSH: fed desserts until they pop | | |
+
+Code: `src/game/gore.js` (blood and wounds), `src/game/fatalities/` (the toolkit in `kit.js`, the driver in
+`runtime.js` and one script per fighter in `blades.js`, `crush.js`, `burst.js`, `decay.js`), and `src/render/wounds.js`
+(drawing the wounds and the loose pieces of the victim). A fighter without a script just bursts (`FALLBACK`), so
+adding a new fighter never breaks. Preview any fatality as a contact sheet with
+`tools/fatalities.html?char=yotam&foe=gal&at=-30,20,50,80,120&cols=3` (`batch=` takes a list of fighters).
 
 ## Controls
 
@@ -137,6 +169,8 @@ offline and reports levels; click to listen).
    `special.type` can reuse any existing special (e.g. `magicBolt`) or a new
    module you add to `src/game/specials/` and register in `specials/index.js`.
 3. Without a picture the fighter gets the procedural pixel body from `look` / `body` / `colors`.
+4. Optional: a grown-up mode fatality in `src/game/fatalities/` (registered by character `id` in its `index.js`).
+   Without one the fighter just bursts.
 
 ## Tests (headless, no browser)
 

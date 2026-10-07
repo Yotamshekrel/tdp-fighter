@@ -12,6 +12,8 @@ import { Fighter, NO_INPUT } from './fighter.js';
 import { overlap } from './collision.js';
 import { resolvePush } from './physics.js';
 import { Fx } from '../render/effects.js';
+import { goreHit, goreTick, goreKO } from './gore.js';
+import { startFatality, updateFatality } from './fatalities/runtime.js';
 
 export const START_X = [150, 330];
 
@@ -21,8 +23,13 @@ export class Battle {
    * @param {object[]} o.chars        two character definitions
    * @param {object[]} o.controllers  two controllers with read(battle, me, opp) -> InputState
    * @param {object}   [o.arena]      arena definition (only used by the renderer)
+   * @param {boolean}  [o.gore] grown-up mode: blood, wounds, and a fatality to end the match
    */
-  constructor({ chars, controllers, arena = null }) {
+  constructor({ chars, controllers, arena = null, gore = false }) {
+    this.gore = gore;
+    this.finisher = null; // grown-up mode: the fighter who is about to perform a fatality
+    this.fatal = null; // the running fatality (game/fatalities/runtime.js)
+    this.lens = null; // blood on the screen itself
     this.fighters = [new Fighter(chars[0], 0), new Fighter(chars[1], 1)];
     this.controllers = controllers;
     this.arena = arena;
@@ -74,6 +81,8 @@ export class Battle {
     this.hitstop = 0;
     this.slowmo = 0;
     this.perfect = false;
+    this.finisher = null;
+    this.lens = null;
   }
 
   /** Freeze everything except `owner` for `frames` (special wind-up). */
@@ -105,6 +114,7 @@ export class Battle {
     this.fx.update();
     if (this.shake > 0) this.shake = Math.max(0, this.shake - 0.6);
     if (this.flash && --this.flash.t <= 0) this.flash = null;
+    if (this.gore) goreTick(this);
 
     // Read inputs every frame (lets the CPU keep its short-term memory fresh).
     const inputs = this.fighters.map((f, i) => {
@@ -162,6 +172,10 @@ export class Battle {
       case 'time': {
         // Wait for KO'd fighter to land and any special to finish, then pose.
         const busy = this.fighters.some((f) => f.state === 'special' || f.state === 'attack');
+        if (this.finisher && this.phaseT > 70 && !busy && this.opponentOf(this.finisher).grounded) {
+          startFatality(this, this.finisher, this.opponentOf(this.finisher));
+          break;
+        }
         if (this.phaseT > 70 && !busy && !this.posed) {
           this.posed = true;
           const w = this.roundWinner;
@@ -180,6 +194,9 @@ export class Battle {
         if (this.phaseT > 210) this.nextRound();
         break;
       }
+      case 'fatality':
+        updateFatality(this);
+        break;
       case 'matchEnd':
         break;
     }
@@ -209,6 +226,12 @@ export class Battle {
     if (w && w !== 'draw') {
       w.roundWins++;
       this.perfect = w.health >= RULES.maxHealth;
+    }
+    if (this.gore && reason !== 'time') {
+      const loser = w && w !== 'draw' ? this.opponentOf(w) : null;
+      for (const f of this.fighters) if (f.health <= 0) goreKO(this, f);
+      // the match-deciding knock-out gets a fatality
+      this.finisher = loser && w.roundWins >= RULES.roundsToWin ? w : null;
     }
   }
 
@@ -333,6 +356,7 @@ export class Battle {
     this.fx.spawn('ring', px, py, { size: 3, grow: 0.9, life: 10, color: '#fff' });
     this.fx.spawn('flare', px, py, { size: big ? 15 : 10, grow: 0.5, life: big ? 11 : 8, color: big ? '#ffd27a' : '#ffffff' });
     this.event('hit', { f: defender, attacker, big, sfx: hit.sfx, special: !!hit.special });
+    if (this.gore) goreHit(this, attacker, defender, dmg, hit, dir, px, py);
     return 'hit';
   }
 }

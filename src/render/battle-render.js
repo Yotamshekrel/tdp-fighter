@@ -1,6 +1,7 @@
 // Draws a Battle: arena, shadows, fighters, entities, particles, HUD, banners.
-import { VIEW } from '../config.js';
+import { VIEW, RULES } from '../config.js';
 import { getArena, drawArena } from './backgrounds.js';
+import { drawWounds, drawGored, drawLens, leanOf } from './wounds.js';
 import { drawAnnounce, drawCutIn } from './hud.js';
 import { drawFrame } from './sprites.js';
 import { postProcess } from './post.js';
@@ -9,7 +10,11 @@ const { W, H, GROUND_Y } = VIEW;
 
 export function drawFighter(g, f, bank, battle, reflect = 0) {
   const { pose, frame } = f.anim();
-  const tint = f.flash > 0 && f.flash % 2 ? 'white' : f.frozen > 0 ? 'ice' : null;
+  const flashTint = f.flash > 0 && f.flash % 2 ? 'white' : f.frozen > 0 ? 'ice' : null;
+  // grown-up mode: the more hurt, the paler (a cached copy of the frame: filtering on every draw is too slow)
+  const hp = Math.max(0, f.health) / RULES.maxHealth;
+  const hurtLevel = battle.gore ? Math.round(Math.max(0, (0.55 - hp) / 0.55) * 4) : 0;
+  const tint = flashTint || (hurtLevel > 0 ? `hurt${hurtLevel}` : null);
   const giant = f.scale > 1.9; // a giant fighter gets frames twice as dense so it stays sharp
   const spr = bank.frame(f.def.id, pose, frame, f.costume, tint, giant);
   let sx = f.scale, sy = f.scale;
@@ -22,7 +27,7 @@ export function drawFighter(g, f, bank, battle, reflect = 0) {
   const x = f.x + jitter;
   // remember where the hand, eyes and mouth are on screen, so special attacks can start from them
   const V = spr.vis;
-  f.vis = V && !tint
+  f.vis = V && !flashTint
     ? {
       hand: { x: f.x + f.facing * sx * V.hand[0], y: f.y + sy * V.hand[1] },
       eye: { x: f.x + f.facing * sx * V.eye[0], y: f.y + sy * V.eye[1] },
@@ -43,10 +48,23 @@ export function drawFighter(g, f, bank, battle, reflect = 0) {
     drawFrame(g, spr);
     g.restore();
   }
+  if (!battle.gore) {
+    g.save();
+    g.translate(x, f.y);
+    g.scale(f.facing * sx, sy);
+    drawFrame(g, spr);
+    g.restore();
+    return;
+  }
+  // grown-up mode: slumped, and the wounds show
+  if (f.gore) return drawGored(g, f, spr, V, hp, battle.frame);
   g.save();
   g.translate(x, f.y);
   g.scale(f.facing * sx, sy);
+  const lean = leanOf(f, hp, battle.frame);
+  if (lean) g.rotate(lean);
   drawFrame(g, spr);
+  drawWounds(g, f, V, hp, battle.frame);
   g.restore();
 }
 
@@ -91,6 +109,7 @@ function updateCamera(battle) {
   // never zoom so far that a jumping or giant fighter's head leaves the screen
   const topY = Math.min(a.y - 96 * a.scale, b.y - 96 * b.scale);
   zt = Math.min(zt, H / Math.max(H * 0.55, H - Math.max(0, topY - 14)));
+  if (battle.fatal) zt = Math.min(Math.max(zt, battle.fatal.def.zoom ?? 1.35), H / Math.max(H * 0.55, H - Math.max(0, topY - 14)));
   zt = Math.max(1, zt);
   const k = cam.init ? 0.09 : 1;
   cam.z += (zt - cam.z) * k;
@@ -115,7 +134,10 @@ export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}
   g.translate(0, H);
   g.scale(cam.z, cam.z);
   g.translate(-cam.x, -H);
-  drawArena(g, arena, frame, cam.x, freeze ? 0.45 : 0);
+  drawArena(g, arena, frame, cam.x, freeze ? 0.45 : battle.fatal ? 0.28 : 0);
+  if (battle.gore) battle.fx.drawStains(g);
+  const FT = battle.fatal && battle.fatal.t >= 0 ? battle.fatal : null;
+  if (FT?.def.drawBack) FT.def.drawBack(g, FT.w, FT.l, battle, FT.t, FT);
 
   for (const f of battle.fighters) drawShadow(g, f);
   for (const e of battle.entities) if (e.layer === 0 && e.draw) drawEntity(g, e, battle);
@@ -127,6 +149,7 @@ export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}
     if (f.state === 'special' && f.special.draw) f.special.draw(g, f, battle, f.t);
   }
   for (const e of battle.entities) if (e.layer !== 0 && e.draw) drawEntity(g, e, battle);
+  if (FT?.def.draw) FT.def.draw(g, FT.w, FT.l, battle, FT.t, FT);
   battle.fx.draw(g);
 
   if (debug) drawDebug(g, battle);
@@ -138,6 +161,15 @@ export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}
     drawAnnounce(g, battle.announce, frame);
   }
 
+  if (battle.gore) drawLens(g, battle);
+  if (battle.fatal) {
+    // a dark red frame around the picture while the finishing move plays
+    const gr = g.createRadialGradient(W / 2, H * 0.55, H * 0.35, W / 2, H * 0.55, H * 0.95);
+    gr.addColorStop(0, 'rgba(70,0,8,0)');
+    gr.addColorStop(1, 'rgba(70,0,8,0.5)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, W, H);
+  }
   if (battle.flash) {
     g.fillStyle = withAlpha(battle.flash.color, (battle.flash.t / battle.flash.max) * 0.7);
     g.fillRect(0, 0, W, H);

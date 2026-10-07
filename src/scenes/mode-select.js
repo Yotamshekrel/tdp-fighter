@@ -4,7 +4,8 @@
 //   MAIN      PLAY / SETTINGS
 //   PLAY      1P VS CPU / 1P VS 2P / TOURNAMENT
 //   ARENA     pick a stage (with preview) or RANDOM
-//   LEVEL     CPU difficulty (1P vs CPU and tournament)    -> character select
+//   LEVEL     CPU difficulty (1P vs CPU and tournament)
+//   GROWNUP   grown-up mode? NO (default) / YES: blood and fatalities    -> character select
 //   SETTINGS  SOUND ON/OFF / HOW TO PLAY
 //   HELP      controls + rules
 //
@@ -25,7 +26,7 @@ export const DIFFS = [
   { id: 'hard', label: 'HARD', desc: 'Fast reactions, blocks a lot, always uses the special.', color: '#ff5a4e' },
   { id: 'extreme', label: 'EXTREME', desc: 'Near-instant reflexes. Blocks almost everything, punishes every slip. Good luck.', color: '#e04dff' },
 ];
-const TITLES = { main: 'MAIN MENU', play: 'PLAY', arena: 'SELECT ARENA', level: 'CPU DIFFICULTY', settings: 'SETTINGS', help: 'HOW TO PLAY' };
+const TITLES = { main: 'MAIN MENU', play: 'PLAY', arena: 'SELECT ARENA', level: 'CPU DIFFICULTY', grownup: 'GROWN-UP MODE?', settings: 'SETTINGS', help: 'HOW TO PLAY' };
 const SHOW_FRAMES = 260; // how long each fighter of the line-up stays in front
 
 export class ModeSelectScene {
@@ -39,6 +40,7 @@ export class ModeSelectScene {
     this.t = 0;
     this.rects = [];
     this.mode = params.mode || this.mode || '1p';
+    if (!params.page) this.game.grownUp = false; // grown-up mode is asked again for every new game, and starts at NO
     this.stack = params.page ? this.pathTo(params.page) : ['main'];
     this.sel = this.defaultSel(this.page);
     // a shuffled line-up of fighters for the showcase
@@ -54,6 +56,7 @@ export class ModeSelectScene {
   pathTo(page) {
     if (page === 'arena') return ['main', 'play', 'arena'];
     if (page === 'level') return ['main', 'play', 'arena', 'level'];
+    if (page === 'grownup') return this.mode === '2p' ? ['main', 'play', 'arena', 'grownup'] : ['main', 'play', 'arena', 'level', 'grownup'];
     if (page === 'play') return ['main', 'play'];
     if (page === 'settings') return ['main', 'settings'];
     return ['main'];
@@ -66,6 +69,7 @@ export class ModeSelectScene {
       case 'play': return ['1P VS CPU', '1P VS 2P', 'TOURNAMENT'];
       case 'arena': return ['RANDOM', ...ARENAS.map((a) => a.name.toUpperCase())];
       case 'level': return DIFFS.map((d) => d.label);
+      case 'grownup': return ['NO', 'YES'];
       case 'settings': return [`SOUND: ${this.game.audio.muted ? 'OFF' : 'ON'}`, `ANNOUNCER: ${this.game.audio.announcer ? 'ON' : 'OFF'}`, 'HOW TO PLAY'];
       default: return [];
     }
@@ -75,6 +79,7 @@ export class ModeSelectScene {
     const s = this.game.settings;
     if (page === 'arena') return Math.max(0, ['random', ...ARENAS.map((a) => a.id)].indexOf(s.stage));
     if (page === 'level') return Math.max(0, DIFFS.findIndex((d) => d.id === s.difficulty));
+    if (page === 'grownup') return this.game.grownUp ? 1 : 0;
     if (page === 'play') return this.mode === '2p' ? 1 : this.mode === 'tournament' ? 2 : 0;
     return 0;
   }
@@ -124,11 +129,13 @@ export class ModeSelectScene {
       case 'arena':
         settings.stage = this.sel === 0 ? 'random' : ARENAS[this.sel - 1].id;
         this.game.saveSettings();
-        if (this.mode !== '2p') return this.push('level');
-        return this.startSelect();
+        return this.push(this.mode !== '2p' ? 'level' : 'grownup');
       case 'level':
         settings.difficulty = DIFFS[this.sel].id;
         this.game.saveSettings();
+        return this.push('grownup');
+      case 'grownup':
+        this.game.grownUp = this.sel === 1;
         return this.startSelect();
       case 'settings':
         if (this.sel === 0) {
@@ -169,7 +176,7 @@ export class ModeSelectScene {
 
   draw(g) {
     const { W, H } = VIEW;
-    menuBackdrop(g, this.t, this.page === 'arena' ? '#ff9a3d' : '#ff3d8b', '#2fb8ff');
+    menuBackdrop(g, this.t, this.page === 'arena' ? '#ff9a3d' : this.page === 'grownup' ? '#d01428' : '#ff3d8b', this.page === 'grownup' ? '#3a1070' : '#2fb8ff');
     drawText(g, 'TDP FIGHTER', 34, 16, { scale: 1.7, color: ['#ffffff', '#ffd23f', '#ff9b2e'], outline: 'rgba(5,6,24,0.9)', glow: '#ff8a2a' });
     if (this.page === 'help') {
       this.drawHelp(g);
@@ -189,6 +196,7 @@ export class ModeSelectScene {
       const gap = big ? 33 : 26;
       this.rects = drawMenu(g, items, this.sel, 128, 96, this.t, { gap, scale: big ? 1.55 : 1.25, width: 176 });
       if (this.page === 'level') this.drawLevelCard(g, 96 + items.length * gap + 4);
+      else if (this.page === 'grownup') this.drawGrownCard(g);
       else this.drawShowcase(g);
     }
     hints(g, [['↑↓', 'MOVE'], ['ENTER', 'SELECT'], ['ESC', 'BACK']], H - 15);
@@ -251,6 +259,44 @@ export class ModeSelectScene {
     }
     wrap(d.desc.toUpperCase(), 30).forEach((ln, i) => drawText(g, ln, 266, 158 + i * 13, { scale: 1.25, color: COLORS.text }));
     void y;
+  }
+
+  /** The grown-up mode question: what YES turns on, with blood running down the card. */
+  drawGrownCard(g) {
+    const yes = this.sel === 1;
+    const accent = yes ? '#ff2a3a' : '#5dff8a';
+    const x = 236, y = 84, w = 220, h = 140;
+    glass(g, x, y, w, h, { accent });
+    // an 18+ badge
+    if (yes) {
+      rrPath(g, x + w - 38, y + 9, 28, 14, 4);
+      g.fillStyle = '#d4142a';
+      g.fill();
+      drawText(g, '18+', x + w - 24, y + 12, { scale: 1.6, align: 'center', color: '#ffffff', weight: 800 });
+    }
+    drawText(g, yes ? 'BRUTAL' : 'CLEAN', x + 14, y + 10, { scale: 3.4, color: yes ? ['#ffffff', '#ff7a6a', '#d4142a'] : ['#ffffff', '#a8ffc4', '#3ed67a'], outline: 'rgba(5,6,24,0.85)', glow: accent });
+    const lines = yes
+      ? ['MORE BLOOD IN EVERY HIT', 'FIGHTERS BLEED AND LOOK BATTERED', 'AS THEIR HEALTH RUNS OUT', 'A FATALITY ENDS EVERY MATCH,', 'DIFFERENT FOR EACH FIGHTER']
+      : ['THE NORMAL GAME', 'NO BLOOD, NO FATALITIES', '', 'PICK YES FOR THE', 'GROWN-UP VERSION'];
+    lines.forEach((ln, i) => drawText(g, ln, x + 14, y + 48 + i * 13, { scale: 1.25, color: yes && i < 3 ? '#ffd0d0' : COLORS.text }));
+    drawText(g, yes ? 'NOT FOR KIDS!' : 'DEFAULT', x + 14, y + h - 17, { scale: 1.5, color: accent, outline: 'rgba(5,6,24,0.8)' });
+    if (yes) {
+      // blood running down from the top edge of the card
+      g.save();
+      rrPath(g, x, y, w, h, 7);
+      g.clip();
+      for (let i = 0; i < 9; i++) {
+        const dx = x + 12 + i * 25 + ((i * 7) % 5);
+        const len = 3 + ((i * 13) % 7) + 4 * (0.5 + 0.5 * Math.sin(this.t * 0.03 + i * 1.7));
+        g.fillStyle = 'rgba(190, 16, 32, 0.92)';
+        g.fillRect(dx, y, 2.2, len);
+        g.beginPath();
+        g.arc(dx + 1.1, y + len, 2, 0, 6.3);
+        g.fill();
+      }
+      g.fillRect(x, y, w, 3);
+      g.restore();
+    }
   }
 
   drawArenaPage(g) {

@@ -33,7 +33,8 @@ export class FightScene {
       mode === '2p' ? [human(0), human(1)] :
       mode === 'demo' ? [new CpuBot(difficulty), new CpuBot(difficulty)] :
       [human(0), new CpuBot(difficulty)];
-    this.battle = new Battle({ chars, controllers, arena });
+    const gore = !!this.game.grownUp && mode !== 'demo'; // grown-up mode, asked in the menu
+    this.battle = new Battle({ chars, controllers, arena, gore });
     this.tracker = mode === 'demo' ? null : trackMatch({ mode, difficulty, arena, chars });
     this.hud = new Hud();
     this.pauseItems = mode === 'tournament' ? TOURNAMENT_PAUSE_ITEMS : PAUSE_ITEMS;
@@ -135,6 +136,8 @@ export class FightScene {
       case 'fight': a.play('fight'); a.say('Fight!', { rate: 1.05, pitch: 0.5 }); break;
       case 'ko': a.play('ko'); a.duck(0.2, 1.3, 0.6); a.say('K. O.', { rate: 0.8, pitch: 0.45 }); break;
       case 'timeover': a.play('back'); a.say('Time over'); break;
+      case 'finishHim': a.say('Finish him!', { rate: 0.72, pitch: 0.3 }); break;
+      case 'fatality': a.play('fatality'); a.duck(0.12, 2.4, 0.8); a.say('Fatality!', { rate: 0.7, pitch: 0.25 }); break;
       case 'roundWin': a.play('win'); break;
       case 'matchEnd':
         if (ev.winner) setTimeout(() => a.say(`${ev.winner.def.name} wins!`, { rate: 0.9 }), 900);

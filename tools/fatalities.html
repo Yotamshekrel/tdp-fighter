@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fatality sheet (dev only)</title>
+    <style>body { margin: 0; background: #111; } canvas { display: block; width: 100vw; }</style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script type="module">
+      // Dev tool: plays one fatality (grown-up mode) and shows a contact sheet of frames.
+      //   ?char=yotam&foe=gal&arena=airport-lobby&at=0,20,40,60,80,100&cols=2
+      // `char` wins and performs it, `foe` is the victim. `at` = frames after the winner is in place
+      // (negative numbers are the "FINISH HIM!" walk-up).
+      import { VIEW } from '../src/config.js';
+      import { CHARACTERS } from '../src/data/characters.js';
+      import { SpriteBank } from '../src/render/sprites.js';
+      import { Battle } from '../src/game/battle.js';
+      import { drawBattle } from '../src/render/battle-render.js';
+      import { Hud } from '../src/render/hud.js';
+      import { loadFonts } from '../src/render/fonts.js';
+
+      const q = new URLSearchParams(location.search);
+      const foeId = q.get('foe') || 'gal', arena = q.get('arena') || 'airport-lobby';
+      const cols = Number(q.get('cols') || 2);
+      const { W, H, SCALE: S } = VIEW;
+      await loadFonts('../public/');
+      const bank = new SpriteBank();
+      await bank.load(CHARACTERS);
+      const by = (i) => CHARACTERS.find((c) => c.id === i);
+
+      async function run(id, foe, at, shot) {
+        const battle = new Battle({ chars: [by(id), by(foe)], controllers: [{ read() {} }, { read() {} }], arena, gore: true });
+        window.__battle = battle;
+        const hud = new Hud();
+        const cv = document.createElement('canvas');
+        cv.width = W * S;
+        cv.height = H * S;
+        const g = cv.getContext('2d');
+        const render = () => {
+          g.setTransform(S, 0, 0, S, 0, 0);
+          drawBattle(g, battle, bank, hud, battle.frame, false);
+        };
+        for (let i = 0; i < 230 && battle.phase !== 'fight'; i++) battle.update();
+        const f = battle.fighters[0], o = battle.fighters[1];
+        f.x = Number(q.get('x') || 190);
+        o.x = f.x + Number(q.get('gap') || 70);
+        f.roundWins = 1; // the next round decides the match
+        o.health = 3;
+        for (let i = 0; i < 20; i++) { battle.update(); render(); } // let the wounds and camera settle
+        battle.resolveHit(f, o, { damage: 10, guard: 'mid', knockdown: true, push: 4, hitstun: 20 }, f.x);
+        let guard = 0;
+        while (!(battle.fatal && battle.fatal.t >= Math.min(...at) - 1) && guard++ < 1500) { battle.update(); render(); }
+        const cells = [];
+        for (const a of at) {
+          while (battle.fatal && battle.fatal.t < a - 1) { battle.update(); render(); }
+          battle.update();
+          render();
+          const c = document.createElement('canvas');
+          if (q.get('crop') === 'close') {
+            // zoom in on the pair (world units -> pixels of the camera's picture)
+            const z = battle.cam.z, cx = battle.cam.x;
+            const mid = (f.x + o.x) / 2, w = Number(q.get('w') || 220);
+            const x0 = mid - w / 2, x1 = mid + w / 2, y0 = 60, y1 = 262;
+            const X0 = (x0 - cx) * z * S, X1 = (x1 - cx) * z * S, Y0 = (H + (y0 - H) * z) * S, Y1 = (H + (y1 - H) * z) * S;
+            c.width = 480;
+            c.height = Math.round((480 * (Y1 - Y0)) / (X1 - X0));
+            c.getContext('2d').drawImage(cv, X0, Y0, X1 - X0, Y1 - Y0, 0, 0, c.width, c.height);
+          } else {
+            c.width = 480;
+            c.height = 270;
+            c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height);
+          }
+          cells.push(c);
+        }
+        const rows = Math.ceil(cells.length / cols), cw = cells[0].width, ch = cells[0].height;
+        const out = document.getElementById('c');
+        out.width = cw * cols;
+        out.height = ch * rows;
+        const og = out.getContext('2d');
+        cells.forEach((c, i) => og.drawImage(c, (i % cols) * cw, Math.floor(i / cols) * ch));
+        if (shot) await fetch(`/__shot?name=${shot}`, { method: 'POST', body: out.toDataURL('image/png') }); // dev server saves it under tools/shots/
+        return `${battle.fatal?.def.name ?? battle.phase} duration=${battle.fatal?.def.duration}`;
+      }
+
+      // ?char=yotam&foe=gal&at=-30,0,30,60&cols=2&crop=close&shot=name      one fighter
+      // ?batch=yotam,gal,...&at=...                                          each one, saved as <id>.png
+      const at = (q.get('at') || '-30,0,20,40,60,80').split(',').map(Number);
+      const ids = (q.get('batch') || q.get('char') || 'yotam').split(',');
+      const done = [];
+      for (const id of ids) done.push(await run(id, id === foeId ? 'yotam' : foeId, at, q.get('batch') ? id : q.get('shot')));
+      document.title = `done ${done.join(' | ')}`;
+    </script>
+  </body>
+</html>

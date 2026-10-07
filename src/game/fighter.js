@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Fighter: one character in a battle, driven by a finite state machine.
 //
-// States: idle, walk, jump, crouch, attack, block, hitstun, special, ko, win
+// States: idle, walk, jump, crouch, attack, block, hitstun, special, ko, win,
+//         fatal (grown-up mode: scripted by a fatality, see game/fatalities/)
 //
 // Every fighter is controlled through the same InputState
 //   { left, right, up, down, attack, defend, special }  (booleans, "held")
@@ -74,6 +75,10 @@ export class Fighter {
     this.combo = 0;
     this.frozen = 0; // cosmetic "frozen" tint frames (Yair's AC)
     this.squish = 0; // cosmetic squeeze (Yaara's hug)
+    this.poolDone = false; // grown-up mode: the pool of blood under a knocked-out fighter has been started
+    this.wounds = []; // grown-up mode: cuts and bruises drawn on the body (battle-render.js)
+    this.gore = null; // fatality: how the victim is drawn (pieces, squash, ...), see game/fatalities/kit.js
+    this.fpose = null; // fatality: { pose, frame } while state === 'fatal'
     this.prevIn = NO_INPUT;
     this.in = NO_INPUT;
   }
@@ -164,6 +169,8 @@ export class Fighter {
       case 'win':
         this.vx = 0;
         break;
+      case 'fatal':
+        break; // a fatality moves us (held = true)
     }
 
     if (!this.held) stepBody(this);
@@ -412,11 +419,11 @@ export class Fighter {
 
   /** Invulnerable right now? (special, wake-up, KO) */
   isInvulnerable() {
-    return this.invuln > 0 || this.state === 'special' || this.state === 'ko';
+    return this.invuln > 0 || this.state === 'special' || this.state === 'ko' || this.state === 'fatal';
   }
 
   hurtbox() {
-    if (this.state === 'ko') return null;
+    if (this.state === 'ko' || this.state === 'fatal') return null;
     let box = HURT.stand;
     if (this.state === 'hitstun' && this.stun && (this.stun.phase === 'down' || this.stun.phase === 'getup')) box = HURT.lying;
     else if (!this.grounded) box = HURT.air;
@@ -465,6 +472,8 @@ export class Fighter {
         return this.grounded && t > 10 ? { pose: 'lying', frame: 0 } : { pose: 'fall', frame: 0 };
       case 'win':
         return { pose: 'win', frame: Math.floor(t / 14) % 2 };
+      case 'fatal':
+        return this.fpose || { pose: 'idle', frame: 0 };
     }
     return { pose: 'idle', frame: 0 };
   }

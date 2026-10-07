@@ -52,6 +52,7 @@ const game = {
   bank: new SpriteBank(),
   settings: loadSettings(),
   debug: false,
+  grownUp: false, // grown-up mode (blood and fatalities), asked after the difficulty screen; never kept between matches
   scene: null,
   sceneName: '',
   fade: null,

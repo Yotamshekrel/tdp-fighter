@@ -13,7 +13,7 @@ const BONE_SHADE = '#b9a782';
 const BLOOD = '#c4142a';
 
 /** A string of vertebrae along a sagging curve from a to b; `k` (0..1) is how much of it is out. */
-function drawSpine(ctx, a, b, sag, k = 1) {
+export function drawSpine(ctx, a, b, sag, k = 1) {
   const n = 13;
   const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + sag;
   const at = (u) => {
