@@ -192,6 +192,10 @@ Two players on different computers, from the GitHub Pages site, over the interne
 - **The room server** is only used to set up the connection: `api/room.js` (Vercel + Neon, tables `rooms` and
   `room_msgs` are created on first use, rooms expire after 15 minutes). `npm run dev` serves an in-memory
   copy of it, so two browser tabs can play each other locally.
+- **If vercel.app is blocked** (company proxies): the room handshake can run on Cloudflare instead.
+  `cd worker && npx wrangler login && npx wrangler deploy`, optionally `npx wrangler secret put CF_TURN_KEY_ID`
+  and `CF_TURN_API_TOKEN` for the TURN relay, then set `WORKER_URL` in `src/net/signaling.js` to the printed address.
+  Opening that address in a browser should say "tdp-fighter rooms ok".
 - **Needs:** both players on a recent Chrome/Edge (other browsers should work, but the fight maths must match
   exactly), and the game tab kept in front: a hidden tab stops running and the other player will see
   "WAITING FOR OPPONENT". Esc twice leaves a match.
