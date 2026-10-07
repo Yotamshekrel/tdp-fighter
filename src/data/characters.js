@@ -282,6 +282,17 @@ export const CHARACTERS = [
     bio: 'Head in the stars. Boots on the ground.',
     quote: 'We are all made of stardust. You are made of bruises.',
   },
+  {
+    id: 'tal', name: 'Tal', isNew: true,
+    face: { x: 0.5, y: 0.2, h: 0.3 },
+    look: { skin: '#f0c8a8', hair: 'longStraight', hairColor: '#8a7448', hairColor2: '#a89060', eyes: '#5a4026', brows: 1, mouth: 'smile', female: true, lips: '#c87a74', jaw: 0.94 },
+    body: { build: 'athletic', height: 1.0, top: 'tee', bottom: 'pants', shoes: 'boots', hairLen: 22 },
+    colors: { shirt: '#2a3a66', shirt2: '#4a4a52', pants: '#5a4a30', shoes: '#3a2a1c' },
+    stats: { speed: 1.00, jump: 1.00, reach: 1 },
+    special: { type: 'replyAll', name: 'Reply All', description: 'Sends you emails and meeting invites. Four emails first, then two meetings you cannot decline.' },
+    bio: 'Your inbox is her battlefield.',
+    quote: 'Per my last email... you lost.',
+  },
 ];
 
 export const byId = (id) => CHARACTERS.find((c) => c.id === id);

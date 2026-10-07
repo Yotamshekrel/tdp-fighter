@@ -56,6 +56,7 @@ export const RIGS = {
   ofir: { chin: 200 },
   rashida: { chin: 175 },
   shay: { chin: 145 },
+  tal: { chin: 160 },
   yaara: { chin: 150, joints: { elbowB: [-165, 406] } },
   yair: { chin: 185 },
   yotam: { chin: 190 },

@@ -1,8 +1,9 @@
 // Fatalities that burst: Ayoub (drawn and quartered by magic), Maya (sugar overdose), Shay (the head pops),
-// Rashida (t-shirt cannon), Dvir (a wave of blood) and Yaara (the bear hug). See runtime.js for the shape of a fatality.
+// Rashida (t-shirt cannon), Dvir (a wave of blood), Yaara (the bear hug) and Tal (inbox overflow). See runtime.js for the shape of a fatality.
 import { BODY } from '../../config.js';
 import { handPos, mouthPos } from '../specials/helpers.js';
 import { inked } from '../../render/fx-kit.js';
+import { drawText } from '../../render/font.js';
 import { GY, NECK, at, ease, lerp, prog, goreOf, slice, grid, decap, free, topple, spray, mist, chunks, geyser, lens, splatter, randRange, pick } from './kit.js';
 
 const SC = BODY.SCALE;
@@ -163,6 +164,98 @@ export const maya = {
   },
   draw(g, w, l, b, t, F) {
     for (const it of F.d.items) if (!it.dead) drawTreat(g, it);
+  },
+};
+
+// ---- TAL: inbox overflow -------------------------------------------------------------------------------------------
+function drawMail(g, it) {
+  g.save();
+  g.translate(it.x, it.y);
+  g.rotate(it.rot);
+  inked(g, '#f6f8ff', (c) => c.roundRect(-5, -3.6, 10, 7.2, 0.8), 0.7);
+  g.strokeStyle = '#14101e';
+  g.lineWidth = 0.5;
+  g.beginPath(); g.moveTo(-4.6, -3.2); g.lineTo(0, 0.6); g.lineTo(4.6, -3.2); g.stroke();
+  g.restore();
+}
+
+export const tal = {
+  name: 'INBOX OVERFLOW',
+  dist: 110,
+  zoom: 1.2,
+  duration: 150,
+  killAt: 90,
+  start(w, l, b, F) {
+    b.fx.text('99+ UNREAD!', w.x, w.y - 100 * w.scale, { color: ['#ffffff', '#ff6a5a'], life: 44 });
+    F.d.items = [];
+  },
+  update(w, l, b, t, F) {
+    const d = F.d;
+    const G = goreOf(l);
+    w.fpose = { pose: 'throw', frame: t % 8 < 4 ? 1 : 0 };
+    l.fpose = { pose: 'hit', frame: Math.floor(t / 6) % 2 };
+    if (t >= 4 && t < 82 && t % 3 === 0) {
+      const h = handPos(w);
+      const m = mouthPos(l);
+      const T = 16;
+      d.items.push({ x: h.x, y: h.y, vx: (m.x - h.x) / T, vy: (m.y - h.y) / T, rot: 0, vr: randRange(-0.3, 0.3), t: 0, T });
+      b.sfx('throw', w.x);
+    }
+    for (const it of d.items) {
+      if (it.dead) continue;
+      it.t++;
+      it.x += it.vx;
+      it.y += it.vy;
+      it.rot += it.vr;
+      if (it.t >= it.T) {
+        it.dead = true;
+        b.sfx('bonk', l.x);
+        b.fx.burst('confetti', it.x, it.y, 6, { colors: ['#ffffff', '#c8d4f0', '#ff6a5a'], speed: 2.4, g: 0.1, life: 26, size: 2 });
+      }
+    }
+    // stuffed with mail until it pops
+    const k = ease(prog(t, 8, 88));
+    G.sx = 1 + 0.7 * k;
+    G.sy = 1 + 0.45 * k;
+    G.ox = Math.sin(t * 1.4) * 1.3 * k;
+    G.filter = `saturate(${1 + 0.5 * k}) hue-rotate(${-10 * k}deg)`;
+    G.noWounds = true;
+    if (t === 90) {
+      const ps = grid(l, 3, 5, -22, 22);
+      ps.forEach((p, i) => {
+        const dir = (i % 3) - 1;
+        free(p, { vx: dir * randRange(2, 5.5) + randRange(-1, 1), vy: -randRange(2, 8), vr: randRange(-0.3, 0.3), g: 0.36 });
+      });
+      const c = at(l, 0, -40);
+      spray(b, c.x, c.y, 50, { speed: 7, spread: 6.3 });
+      chunks(b, c.x, c.y, 16, { speed: 7 });
+      b.fx.burst('confetti', c.x, c.y, 70, { colors: ['#ffffff', '#e4e8f4', '#ff6a5a', '#7fb2ff'], speed: 7, g: 0.1, life: 90, size: 2 });
+      b.sfx('boom', c.x);
+      b.sfx('gore', c.x);
+      b.addShake(12);
+      b.fx.pool(l.x, 46);
+      lens(b, 6);
+      splatter(w, 7);
+    }
+  },
+  draw(g, w, l, b, t, F) {
+    for (const it of F.d.items) if (!it.dead) drawMail(g, it);
+    // the unread counter over their head, climbing as the mail goes in
+    if (t < 92) {
+      const n = Math.min(99, Math.floor(t * 1.2));
+      const x = l.x, y = l.y - 112 * l.scale + Math.sin(t * 0.5) * 1.2 * prog(t, 40, 90);
+      g.save();
+      g.translate(x, y);
+      const sc = 1 + 0.5 * prog(t, 8, 88);
+      g.scale(sc, sc);
+      g.fillStyle = '#ff2a3a';
+      g.beginPath(); g.arc(0, 0, 7, 0, 6.3); g.fill();
+      g.strokeStyle = '#14101e';
+      g.lineWidth = 1;
+      g.stroke();
+      drawText(g, t >= 82 ? '99+' : String(n), 0, -2.4, { scale: 0.9, align: 'center', color: '#ffffff', weight: 800, italic: false });
+      g.restore();
+    }
   },
 };
 
