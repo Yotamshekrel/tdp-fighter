@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { handleRoom, memoryStore } from './api/_room-core.js';
 
 // Dev-only helper: POST a canvas dataURL to /__shot?name=foo and it is saved
 // as tools/shots/foo.png (used for automated visual checks during development).
@@ -20,10 +21,33 @@ const shots = {
   },
 };
 
+// Dev-only: the online-play signaling endpoint with rooms kept in memory, so two browser tabs can
+// play each other without a database (production uses api/room.js on Vercel).
+const rooms = {
+  name: 'dev-rooms',
+  apply: 'serve',
+  configureServer(server) {
+    const store = memoryStore();
+    server.middlewares.use('/api/room', (req, res) => {
+      if (req.method !== 'POST') { res.statusCode = 405; return res.end(); }
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', async () => {
+        let parsed = null;
+        try { parsed = JSON.parse(body); } catch { /* bad body */ }
+        const { status, json } = await handleRoom(store, parsed);
+        res.statusCode = status;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(json));
+      });
+    });
+  },
+};
+
 // Relative base so the built game works from any folder / static host.
 export default defineConfig({
   base: './',
-  plugins: [shots],
+  plugins: [shots, rooms],
   server: { host: true, port: 5173 },
   build: { target: 'es2020', assetsInlineLimit: 0 },
 });

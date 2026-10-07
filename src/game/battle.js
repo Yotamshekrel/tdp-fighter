@@ -21,8 +21,10 @@ export class Battle {
    * @param {object[]} o.chars        two character definitions
    * @param {object[]} o.controllers  two controllers with read(battle, me, opp) -> InputState
    * @param {object}   [o.arena]      arena definition (only used by the renderer)
+   * @param {boolean}  [o.deterministic] online fights: the simulation must not depend on anything that was drawn
    */
-  constructor({ chars, controllers, arena = null }) {
+  constructor({ chars, controllers, arena = null, deterministic = false }) {
+    this.deterministic = deterministic;
     this.fighters = [new Fighter(chars[0], 0), new Fighter(chars[1], 1)];
     this.controllers = controllers;
     this.arena = arena;

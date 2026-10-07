@@ -15,6 +15,7 @@ import { VsScene } from './scenes/vs.js';
 import { FightScene } from './scenes/fight.js';
 import { ResultsScene } from './scenes/results.js';
 import { BracketScene } from './scenes/bracket.js';
+import { LobbyScene } from './scenes/lobby.js';
 import { drawText } from './render/font.js';
 import { loadFonts } from './render/fonts.js';
 import { trackVisit } from './analytics.js';
@@ -52,6 +53,7 @@ const game = {
   bank: new SpriteBank(),
   settings: loadSettings(),
   debug: false,
+  net: null, // the online Session while an online game is going on
   scene: null,
   sceneName: '',
   fade: null,
@@ -63,7 +65,25 @@ const game = {
     if (this.fade && this.fade.phase === 'out') return;
     this.fade = { phase: 'out', t: 0, name, params };
   },
+  /** Show a short message over whatever scene is up. */
+  toast(text) {
+    this.toastMsg = { text, t: 0 };
+  },
+  /** Leave the online session (the other player is told). */
+  dropNet() {
+    const n = this.net;
+    this.net = null;
+    n?.leave();
+  },
+  /** The connection is over: back to the menu with a message. */
+  endOnline(reason) {
+    this.dropNet();
+    this.toast(reason);
+    this.go('mode', { page: 'play' });
+  },
   switchNow(name, params = {}) {
+    // Only the online scenes (and the menu where the host picks the arena) keep a session alive.
+    if (this.net && !ONLINE_SCENES.has(name) && params.mode !== 'online') this.dropNet();
     this.audio.muffle(false);
     this.sceneName = name;
     this.scene = scenes[name];
@@ -81,7 +101,9 @@ const scenes = {
   fight: new FightScene(game),
   results: new ResultsScene(game),
   bracket: new BracketScene(game),
+  lobby: new LobbyScene(game),
 };
+const ONLINE_SCENES = new Set(['lobby', 'select', 'vs', 'fight', 'results']);
 
 // Audio may only start after a user gesture.
 const unlock = () => audio.unlock();
@@ -102,7 +124,7 @@ window.addEventListener('keydown', (e) => {
 
 // Auto-pause the fight when the tab loses focus.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && !game.noAutoPause && game.sceneName === 'fight' && game.scene.params?.mode !== 'demo') game.scene.paused = true;
+  if (document.hidden && !game.noAutoPause && game.sceneName === 'fight' && !['demo', 'online'].includes(game.scene.params?.mode)) game.scene.paused = true;
 });
 
 trackVisit();
@@ -112,7 +134,9 @@ game.switchNow('loading');
 
 function update() {
   input.update();
-  if (input.menu.mute) { audio.toggleMute(); syncMute(); }
+  if (input.menu.mute && !game.textEntry) { audio.toggleMute(); syncMute(); }
+  game.textEntry = false; // a scene that is reading typed text sets this again each frame
+  if (game.net?.status === 'closed' && game.sceneName !== 'lobby' && !game.fade) game.endOnline(game.net.reason || 'DISCONNECTED');
   const f = game.fade;
   if (f) {
     f.t++;
@@ -135,6 +159,15 @@ function render() {
     g.fillStyle = '#000';
     g.fillRect(0, 0, VIEW.W, 12);
     drawText(g, 'RENDER ERROR: ' + err.message, 2, 2, { color: '#f44' });
+  }
+  const t = game.toastMsg;
+  if (t && ++t.t < 200) {
+    const k = Math.min(1, t.t / 10, (200 - t.t) / 20);
+    g.globalAlpha = k;
+    g.fillStyle = 'rgba(5,6,24,0.85)';
+    g.fillRect(0, VIEW.H - 36, VIEW.W, 22);
+    drawText(g, t.text, VIEW.W / 2, VIEW.H - 30, { scale: 1.8, align: 'center', color: '#ffd23f', outline: 'rgba(5,6,24,0.9)' });
+    g.globalAlpha = 1;
   }
   const f = game.fade;
   if (f) {

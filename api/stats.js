@@ -73,14 +73,14 @@ export default async function handler(req, res) {
       rows(`SELECT extract(hour FROM ts AT TIME ZONE $1)::int AS hour, count(*)::int AS n
         FROM events WHERE type = 'visit' GROUP BY 1 ORDER BY 1`, [tz]),
       matchesBy('mode'), matchesBy('difficulty'), matchesBy('arena'),
-      // Characters picked by a human (side 1 in 1P; both sides in 2P).
+      // Characters picked by a human (side 1 in 1P; both sides in 2P and online).
       rows(`SELECT ch AS id, count(*)::int AS n FROM (
           SELECT data->>'p1' AS ch FROM events WHERE type = 'match_start'
-          UNION ALL SELECT data->>'p2' FROM events WHERE type = 'match_start' AND data->>'mode' = '2p') t
+          UNION ALL SELECT data->>'p2' FROM events WHERE type = 'match_start' AND data->>'mode' IN ('2p', 'online')) t
         WHERE ch IS NOT NULL GROUP BY ch ORDER BY n DESC`),
       rows(`SELECT ch AS id, count(*)::int AS played, count(*) FILTER (WHERE won)::int AS won FROM (
           SELECT data->>'p1' AS ch, data->>'winner' = '0' AS won FROM events WHERE type = 'match_end'
-          UNION ALL SELECT data->>'p2', data->>'winner' = '1' FROM events WHERE type = 'match_end' AND data->>'mode' = '2p') t
+          UNION ALL SELECT data->>'p2', data->>'winner' = '1' FROM events WHERE type = 'match_end' AND data->>'mode' IN ('2p', 'online')) t
         WHERE ch IS NOT NULL GROUP BY ch`),
       rows(`SELECT COALESCE(data->>'difficulty', 'unknown') AS label, count(*)::int AS played,
           count(*) FILTER (WHERE data->>'winner' = '0')::int AS won
