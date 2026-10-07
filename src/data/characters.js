@@ -189,9 +189,9 @@ export const CHARACTERS = [
     body: { build: 'athletic', height: 0.98, top: 'tee', bottom: 'shorts', shoes: 'sneakers', extras: ['socks'] },
     colors: { shirt: '#3d3d46', shirt2: '#ff69c8', pants: '#22222a', shoes: '#ffffff', socks: '#ff69c8' },
     stats: { speed: 1.04, jump: 1.03, reach: 0 },
-    special: { type: 'pinkBall', name: 'Pink Power', description: 'Magic with a pink soccer ball. Volleys a bouncing pink rocket.' },
-    bio: 'Never misses. The ball is pink.',
-    quote: 'Pink is the new win.',
+    special: { type: 'spineChoke', name: 'Spine Out', description: 'Rips out his own spine and chokes you with it. Cannot be blocked (but can be jumped).' },
+    bio: 'Has a backbone. Briefly.',
+    quote: 'Nothing personal. Just spine.',
   },
   {
     id: 'nadav', name: 'Nadav',

@@ -25,7 +25,7 @@ import acBlast from './ac-blast.js';
 import bugSwarm from './bug-swarm.js';
 import bearHug from './bear-hug.js';
 import dessertBarrage from './dessert-barrage.js';
-import pinkBall from './pink-ball.js';
+import spineChoke from './spine-choke.js';
 import jackpotRain from './jackpot-rain.js';
 import baguette from './baguette.js';
 import giantStomp from './giant-stomp.js';
@@ -34,7 +34,7 @@ import soundBlast from './sound-blast.js';
 export const SPECIALS = {
   laserEyes, babyRattle, caneWhack, trophyBoomerang, magicBolt, handFlurry,
   sprintDash, surfWave, tequilaToss, acBlast, bugSwarm, bearHug,
-  dessertBarrage, pinkBall, jackpotRain, baguette, giantStomp, soundBlast,
+  dessertBarrage, spineChoke, jackpotRain, baguette, giantStomp, soundBlast,
 };
 
 export function getSpecial(type) {

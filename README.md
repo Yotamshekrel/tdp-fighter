@@ -150,8 +150,8 @@ node scripts/test-tournament.mjs # whole tournaments, headless (bracket logic ch
 
 Every special deals 22 damage on hit, or 5.5 when blocked. There are two
 deliberate exceptions: Yovel's bugs travel along the ground and must be blocked
-crouching, and Yaara's bear hug is a grab, so it can't be blocked but can be
-jumped.
+crouching, and Yaara's bear hug and Mor's spine choke are grabs, so they can't
+be blocked but can be jumped.
 
 In the browser, press <code>`</code> during a fight to show hitboxes.
 
