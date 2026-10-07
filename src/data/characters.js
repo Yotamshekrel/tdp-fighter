@@ -260,6 +260,17 @@ export const CHARACTERS = [
     bio: 'Has the merch. And the attitude.',
     quote: 'Next time, be on time. Here, take a hoodie.',
   },
+  {
+    id: 'noa-ple', name: 'Noa T.', isNew: true,
+    face: { x: 0.5, y: 0.2, h: 0.3 },
+    look: { skin: '#f0c4a4', hair: 'longCurly', hairColor: '#7a4a28', hairColor2: '#a06a3a', eyes: '#3a2416', brows: 1, mouth: 'smile', female: true, lips: '#c87470' },
+    body: { build: 'athletic', height: 1.0, top: 'overshirt', bottom: 'pants', shoes: 'boots', hairLen: 26, hairStyle: 'curly' },
+    colors: { shirt: '#22304f', shirt2: '#3a3d48', pants: '#4a4640', shoes: '#1a1a22' },
+    stats: { speed: 1.00, jump: 1.00, reach: 1 },
+    special: { type: 'pleTraining', name: 'Mandatory PLE', description: 'In charge of learning. Assigns PLE: course windows chase you, stuck at 99%, then a feedback form slams you.' },
+    bio: 'Your training is overdue.',
+    quote: 'Thanks for attending! Please fill out the feedback form.',
+  },
 ];
 
 export const byId = (id) => CHARACTERS.find((c) => c.id === id);

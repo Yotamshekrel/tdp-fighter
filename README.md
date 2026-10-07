@@ -1,10 +1,10 @@
 # TDP Fighter
 
-A modern 2D fighting game starring 20 friends. Plain HTML5 Canvas and vanilla
+A modern 2D fighting game starring 21 friends. Plain HTML5 Canvas and vanilla
 JavaScript (ES modules), bundled with Vite. There's no engine and no AI services, and it works offline once loaded. The only
 network call is an anonymous usage ping (see **Analytics** below).
 
-All 20 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
+All 21 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
 cut into limbs and re-posed for every animation. Arenas, HUD, menus and effects are
 smooth vector art with glow, parallax and a gentle zoom camera. Sound is fully
 synthesised: layered impacts, reverb, stereo panning, five songs and an announcer.
@@ -147,7 +147,7 @@ offline and reports levels; click to listen).
 ```bash
 npm test                         # all of the below
 node scripts/test-specials.mjs   # every special vs idle / blocking dummy at 4 ranges
-node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 20 (crash / NaN checks)
+node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 21 (crash / NaN checks)
 node scripts/test-difficulty.mjs # easy < normal < hard < extreme win rates
 node scripts/test-tournament.mjs # whole tournaments, headless (bracket logic checks)
 ```

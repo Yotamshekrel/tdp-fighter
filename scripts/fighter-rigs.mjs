@@ -50,6 +50,7 @@ export const RIGS = {
   nadav: { chin: 185 },
   nethanel: { chin: 170 },
   noa: { chin: 150 },
+  'noa-ple': { chin: 185 },
   ofek: { chin: 185 },
   ofir: { chin: 200 },
   rashida: { chin: 175 },
