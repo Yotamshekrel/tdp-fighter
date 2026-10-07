@@ -1,10 +1,10 @@
 # TDP Fighter
 
-A modern 2D fighting game starring 19 friends. Plain HTML5 Canvas and vanilla
+A modern 2D fighting game starring 20 friends. Plain HTML5 Canvas and vanilla
 JavaScript (ES modules), bundled with Vite. There's no engine and no AI services, and it works offline once loaded. The only
 network call is an anonymous usage ping (see **Analytics** below).
 
-All 19 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
+All 20 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
 cut into limbs and re-posed for every animation. Arenas, HUD, menus and effects are
 smooth vector art with glow, parallax and a gentle zoom camera. Sound is fully
 synthesised: layered impacts, reverb, stereo panning, five songs and an announcer.
@@ -22,9 +22,13 @@ host. A small service worker caches the build so it keeps working offline.
 ## Menus
 
 - **Title** → **Main menu**: `PLAY` or `SETTINGS`.
-- **Play**: choose `1P VS CPU`, `1P VS 2P` or `TOURNAMENT`. Then pick an arena (or Random)
+- **Play**: choose `1P VS CPU`, `1P VS 2P`, `ONLINE` or `TOURNAMENT`. Then pick an arena (or Random)
   from a live preview. For 1P vs CPU and the tournament you also pick the difficulty (Easy,
   Normal, Hard or Extreme). Then character select, the VS screen, and the fight.
+- **Online** (two computers): one player picks `HOST A GAME` and gets a 4-letter room code; the other
+  picks `JOIN A GAME` and types it. The host chooses the arena, each player picks their own fighter and plays
+  with their own keyboard (arrows + Z/X/C, gamepad or touch). `REMATCH` needs both players to accept.
+  See **Online play** below.
 - **Tournament**: pick your fighter; 7 random rivals complete an 8-fighter bracket.
   Quarter-finals (4 games), semi-finals (2 games), then the final. You play your own
   games; the CPU-vs-CPU games are played for you and revealed on the bracket graph
@@ -127,7 +131,7 @@ To see every pose of a fighter: `/tools/poses.html?char=maya`. Every special:
 `/tools/costumes.html`. Sounds and songs: `/tools/audio.html` (renders everything
 offline and reports levels; click to listen).
 
-## Add a 19th character
+## Add another character
 
 1. Add a picture `assets/new_photos/<Name>.png` (full body, facing right, relaxed pose,
    on a flat magenta background) and an entry in `RIGS` in `scripts/fighter-rigs.mjs`
@@ -143,7 +147,7 @@ offline and reports levels; click to listen).
 ```bash
 npm test                         # all of the below
 node scripts/test-specials.mjs   # every special vs idle / blocking dummy at 4 ranges
-node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 19 (crash / NaN checks)
+node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 20 (crash / NaN checks)
 node scripts/test-difficulty.mjs # easy < normal < hard < extreme win rates
 node scripts/test-tournament.mjs # whole tournaments, headless (bracket logic checks)
 ```
@@ -174,3 +178,24 @@ the database). The private dashboard is at `/admin/` (on GitHub Pages or
 `ADMIN_PASSWORD` environment variable (set in Vercel; a copy is in `.env.local`) and
 reads `api/stats.js`. To change the password: `vercel env rm ADMIN_PASSWORD` for each
 environment, `vercel env add ADMIN_PASSWORD production --sensitive`, then redeploy.
+
+
+## Online play
+
+Two players on different computers, from the GitHub Pages site, over the internet.
+
+- **How it works:** both browsers run the identical fight (same seed) and only swap each frame's button
+  presses over a direct WebRTC connection (input-delay lockstep, ~3-9 frames of delay chosen from the ping).
+  Every second both sides compare a hash of the fight; if they ever disagree the match is ended.
+  Code: `src/net/` (`lockstep.js` the frame sync, `session.js` the connection, `signaling.js` the room-code
+  handshake) and `src/scenes/lobby.js`.
+- **The room server** is only used to set up the connection: `api/room.js` (Vercel + Neon, tables `rooms` and
+  `room_msgs` are created on first use, rooms expire after 15 minutes). `npm run dev` serves an in-memory
+  copy of it, so two browser tabs can play each other locally.
+- **Needs:** both players on a recent Chrome/Edge (other browsers should work, but the fight maths must match
+  exactly), and the game tab kept in front: a hidden tab stops running and the other player will see
+  "WAITING FOR OPPONENT". Esc twice leaves a match.
+- **Limits:** the connection uses Google STUN only. A very strict network (some school/office Wi-Fi) can
+  block it and shows "COULD NOT CONNECT"; the fix would be adding a TURN relay to `ICE` in `src/net/session.js`.
+- **Tests:** `node scripts/test-lockstep.mjs` (two simulated computers over a lossy link must stay identical for
+  every fighter) and `node scripts/test-room.mjs` (room signaling).

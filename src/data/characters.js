@@ -249,6 +249,17 @@ export const CHARACTERS = [
     bio: 'Born to Lekader. Never stops Kadering.',
     quote: 'Thank you for coming to my Kader!',
   },
+  {
+    id: 'rashida', name: 'Rashida', isNew: true,
+    face: { x: 0.5, y: 0.2, h: 0.3 },
+    look: { skin: '#d49a72', hair: 'longWavy', hairColor: '#14100e', eyes: '#3a2416', brows: 1, mouth: 'smile', female: true, lips: '#b8604c', glasses: '#e8b923', earring: 'right', earringColor: '#e8b923', jaw: 0.94 },
+    body: { build: 'athletic', height: 1.0, top: 'overshirt', bottom: 'pants', shoes: 'boots', hairLen: 24 },
+    colors: { shirt: '#2a4a8a', shirt2: '#2a2a30', pants: '#5a5a62', shoes: '#1a1a1a' },
+    stats: { speed: 1.01, jump: 1.00, reach: 0 },
+    special: { type: 'lateSwag', name: "You're Late!", description: "Yells that you're late, then pelts you with swag and merch: shirts, caps, mugs and tote bags." },
+    bio: 'Has the merch. And the attitude.',
+    quote: 'Next time, be on time. Here, take a hoodie.',
+  },
 ];
 
 export const byId = (id) => CHARACTERS.find((c) => c.id === id);

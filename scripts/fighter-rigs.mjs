@@ -52,6 +52,7 @@ export const RIGS = {
   noa: { chin: 150 },
   ofek: { chin: 185 },
   ofir: { chin: 200 },
+  rashida: { chin: 175 },
   shay: { chin: 145 },
   yaara: { chin: 150, joints: { elbowB: [-165, 406] } },
   yair: { chin: 185 },

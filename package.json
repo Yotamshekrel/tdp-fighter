@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Modern 2D fighting game starring 19 friends, built with HTML5 Canvas + vanilla JS.",
+  "description": "Modern 2D fighting game starring 20 friends, built with HTML5 Canvas + vanilla JS.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
