@@ -11,8 +11,8 @@ import { COLORS, glass, glow, rrPath, vgrad, menuBackdrop } from '../render/ui-k
 import { postProcess } from '../render/post.js';
 import { hints } from './ui.js';
 
-const COLS = 7;
-const CELL_W = 34, CELL_H = 42, PITCH_X = 38, PITCH_Y = 46;
+const COLS = 8;
+const CELL_W = 32, CELL_H = 42, PITCH_X = 35, PITCH_Y = 46;
 const GRID_X = Math.round((VIEW.W - (COLS * PITCH_X - 5)) / 2);
 const GRID_Y = 40;
 const FIG_X = [60, VIEW.W - 60];

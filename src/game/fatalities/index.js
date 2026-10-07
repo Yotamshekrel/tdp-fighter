@@ -4,14 +4,14 @@
 // and add it below. A fighter without one gets the plain FALLBACK burst, so the game never breaks.
 // ---------------------------------------------------------------------------
 import { yotam, ofek, noa, ben, nethanel } from './blades.js';
-import { gal, ido, yair, nadav, noaPle } from './crush.js';
+import { gal, ido, yair, nadav, noaPle, danny } from './crush.js';
 import { ayoub, maya, shay, rashida, dvir, yaara } from './burst.js';
 import { ofir, hadar, yovel, mor, eshel } from './decay.js';
 import { grid, free, spray, chunks, lens, randRange } from './kit.js';
 
 export const FATALITIES = {
   yotam, gal, ofir, ofek, ayoub, eshel, ben, dvir, hadar, yair, yovel, yaara, maya, mor, nadav, noa, ido, shay, nethanel,
-  rashida, 'noa-ple': noaPle,
+  rashida, 'noa-ple': noaPle, danny,
 };
 
 /** For a fighter without a finisher of their own: they simply burst. */

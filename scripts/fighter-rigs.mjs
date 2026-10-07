@@ -40,6 +40,7 @@ export const KNEE_CUT_ABOVE_KNEE = 52;
 export const RIGS = {
   ayoub: { chin: 205 },
   ben: { chin: 195 },
+  danny: { chin: 180 },
   dvir: { chin: 195 },
   eshel: { chin: 190 },
   gal: { chin: 150, joints: { elbowB: [-175, 406] } },

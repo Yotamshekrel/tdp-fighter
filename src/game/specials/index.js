@@ -33,12 +33,13 @@ import soundBlast from './sound-blast.js';
 import kaderLecture from './kader-lecture.js';
 import lateSwag from './late-swag.js';
 import pleTraining from './ple-training.js';
+import milkyWay from './milky-way.js';
 
 export const SPECIALS = {
   laserEyes, babyRattle, caneWhack, trophyBoomerang, magicBolt, handFlurry,
   sprintDash, surfWave, tequilaToss, acBlast, bugSwarm, bearHug,
   dessertBarrage, spineChoke, jackpotRain, baguette, giantStomp, soundBlast, kaderLecture,
-  lateSwag, pleTraining,
+  lateSwag, pleTraining, milkyWay,
 };
 
 export function getSpecial(type) {

@@ -1,8 +1,9 @@
 // Fatalities that flatten: Gal (baby bonk), Ido (giant stomp), Yair (frozen, then the AC), Nadav (jackpot of
-// coins) and Noa T. (the PLE windows close in). See runtime.js for the shape of a fatality.
+// coins), Noa T. (the PLE windows close in) and Danny (a planet comes down). See runtime.js for the shape of a fatality.
 import { BODY } from '../../config.js';
 import { drawText } from '../../render/font.js';
 import { inked, bloomAt } from '../../render/fx-kit.js';
+import { planet, galaxy } from '../specials/milky-way.js';
 import { GY, at, ease, easeOut, lerp, prog, goreOf, grid, decap, free, spray, mist, chunks, geyser, lens, splatter, rand, randRange, pick } from './kit.js';
 
 const SC = BODY.SCALE;
@@ -399,6 +400,87 @@ export const noaPle = {
       g.fillRect(-10, 11, 20, 7);
       drawText(g, 'OK', 0, 12, { scale: 0.8, align: 'center', color: '#2a3050' });
       g.restore();
+    }
+  },
+};
+
+// ---- DANNY: planetary alignment, then Saturn drops ---------------------------------------------------------
+const ALIGN = ['mercury', 'venus', 'earth', 'mars', 'neptune'];
+
+export const danny = {
+  name: 'BIG CRUNCH',
+  dist: 120,
+  zoom: 1.0,
+  duration: 150,
+  killAt: 62,
+  start(w, l, b, F) {
+    b.fx.text('LOOK UP!', w.x, w.y - 100 * w.scale, { color: ['#ffffff', '#b78cff'], life: 44 });
+    b.sfx('charge', w.x);
+    F.d.sat = { x: l.x, y: -60 };
+  },
+  update(w, l, b, t, F) {
+    const d = F.d;
+    const G = goreOf(l);
+    const sat = d.sat;
+    w.fpose = t < 62 ? { pose: 'raise', frame: Math.floor(t / 10) % 2 } : { pose: 'throw', frame: 1 };
+    l.fpose = { pose: 'hit', frame: Math.floor(t / 8) % 2 };
+    if (t === 4) b.sfx('hum', l.x);
+    if (t < 30) sat.y = lerp(-60, 88, easeOut(t / 30)); // Saturn slides into the middle of the line-up
+    else if (t < 54) sat.y = 88 + Math.sin(t * 0.3) * 1.2;
+    else if (t < 62) sat.y = lerp(88, GY - 34, ((t - 54) / 8) ** 2);
+    else if (t < 110) sat.y = GY - 34;
+    else sat.y = lerp(GY - 34, -80, easeOut((t - 110) / 36));
+    if (t === 62) {
+      b.addShake(14);
+      b.sfx('boom', l.x);
+      b.sfx('smash', l.x);
+      b.sfx('gore', l.x);
+      b.fx.burst('dust', l.x, GY - 4, 22, { color: '#d8c8a8', size: 7, speed: 4.5, life: 30, angle: -Math.PI / 2, spread: 3.4 });
+      b.fx.spawn('ring', l.x, GY - 2, { size: 8, grow: 4, life: 16, color: '#ffffff' });
+      for (const dir of [-1, 1]) spray(b, l.x, GY - 4, 28, { angle: dir > 0 ? -0.15 : Math.PI + 0.15, spread: 1.6, speed: 8 });
+      spray(b, l.x, GY - 4, 30, { angle: -Math.PI / 2, spread: 2, speed: 6 });
+      chunks(b, l.x, GY - 6, 16, { speed: 7 });
+      b.fx.pool(l.x, 70);
+      lens(b, 6);
+      d.land = true;
+    }
+    if (d.land) {
+      const k = t - 62;
+      G.sy = Math.max(0.05, 1 - k / 3);
+      G.sx = lerp(1, 3, Math.min(1, k / 3));
+      G.noWounds = true;
+      if (k < 40 && k % 4 === 0) spray(b, l.x + randRange(-30, 30), GY - 3, 3, { angle: -Math.PI / 2, spread: 3, speed: 3 });
+      if (k > 16) w.fpose = { pose: 'idle', frame: 0 };
+    }
+  },
+  drawBack(g, w, l, b, t) {
+    galaxy(g, t, Math.min(1, t / 24) * (t > 120 ? Math.max(0, 1 - (t - 120) / 24) : 1));
+  },
+  draw(g, w, l, b, t, F) {
+    const sat = F.d.sat;
+    if (!sat) return;
+    // the other planets hang in a row beside Saturn, then slip away when it drops
+    const gone = prog(t, 54, 70);
+    ALIGN.forEach((kind, i) => {
+      const dx = (i - 2) * 38 + (i >= 2 ? 22 : -22) * 0.5;
+      const rise = easeOut(prog(t, 0 + i * 3, 24 + i * 3));
+      const y = lerp(-40, 98 + Math.sin(t * 0.12 + i) * 3, rise) - gone * 80;
+      g.save();
+      g.translate(l.x + dx * 1.35, y);
+      g.scale(1.5, 1.5);
+      bloomAt(g, 0, 0, 16, '#b78cff', 0.2);
+      planet(g, kind, 7, t);
+      g.restore();
+    });
+    g.save();
+    g.translate(sat.x, sat.y);
+    g.scale(2.2, 2.2);
+    bloomAt(g, 0, 0, 34, '#ffe28a', 0.3);
+    planet(g, 'saturn', 15, t);
+    g.restore();
+    if (F.d.land && t < 110) {
+      g.fillStyle = 'rgba(150,12,28,0.85)'; // blood running out from under it
+      g.fillRect(sat.x - 40, GY - 2, 80, 4);
     }
   },
 };

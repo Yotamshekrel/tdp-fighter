@@ -1,10 +1,10 @@
 # TDP Fighter
 
-A modern 2D fighting game starring 21 friends. Plain HTML5 Canvas and vanilla
+A modern 2D fighting game starring 22 friends. Plain HTML5 Canvas and vanilla
 JavaScript (ES modules), bundled with Vite. There's no engine and no AI services, and it works offline once loaded. The only
 network call is an anonymous usage ping (see **Analytics** below).
 
-All 21 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
+All 22 fighters are drawn from hi-res pixel-art pictures (`assets/new_photos/`),
 cut into limbs and re-posed for every animation. Arenas, HUD, menus and effects are
 smooth vector art with glow, parallax and a gentle zoom camera. Sound is fully
 synthesised: layered impacts, reverb, stereo panning, five songs and an announcer.
@@ -62,7 +62,7 @@ fight. `NO` is the normal game and is always the default.
 | Dvir | COWABUNGA: a wave of blood | Yair | ABSOLUTE ZERO: frozen solid, then the AC drops |
 | Hadar | TEQUILA TIME: soaked, then lit | Yovel | BUG PARTY: eaten down to the bones |
 | Mor | SPINE OUT: head and spine ripped out together | Yaara | BEAR HUG: crushed until they burst |
-| Maya | SUGAR RUSH: fed desserts until they pop | | |
+| Maya | SUGAR RUSH: fed desserts until they pop | Danny | BIG CRUNCH: the planets line up, then ringed Saturn drops and flattens them |
 
 Code: `src/game/gore.js` (blood and wounds), `src/game/fatalities/` (the toolkit in `kit.js`, the driver in
 `runtime.js` and one script per fighter in `blades.js`, `crush.js`, `burst.js`, `decay.js`), and `src/render/wounds.js`
@@ -177,7 +177,7 @@ offline and reports levels; click to listen).
 ```bash
 npm test                         # all of the below
 node scripts/test-specials.mjs   # every special vs idle / blocking dummy at 4 ranges
-node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 21 (crash / NaN checks)
+node scripts/simulate.mjs hard 3 # CPU-vs-CPU matches for all 22 (crash / NaN checks)
 node scripts/test-difficulty.mjs # easy < normal < hard < extreme win rates
 node scripts/test-tournament.mjs # whole tournaments, headless (bracket logic checks)
 ```

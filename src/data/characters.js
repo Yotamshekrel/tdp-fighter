@@ -271,6 +271,17 @@ export const CHARACTERS = [
     bio: 'Your training is overdue.',
     quote: 'Thanks for attending! Please fill out the feedback form.',
   },
+  {
+    id: 'danny', name: 'Danny', isNew: true,
+    face: { x: 0.5, y: 0.2, h: 0.3 },
+    look: { skin: '#e8b890', hair: 'fade', hairColor: '#c8602a', eyes: '#3a5a7a', brows: 2, beard: 'short', beardColor: '#b0501e', glasses: '#9aa0aa', jaw: 1.0 },
+    body: { build: 'athletic', height: 1.02, top: 'quarterzip', bottom: 'pants', shoes: 'boots' },
+    colors: { shirt: '#1c2540', shirt2: '#2a2c34', pants: '#4a5a36', shoes: '#14141a' },
+    stats: { speed: 1.00, jump: 1.00, reach: 1 },
+    special: { type: 'milkyWay', name: 'Milky Way', description: 'Opens the sky. Planets break loose from the Milky Way and are launched at you, one after another, ringed Saturn last.' },
+    bio: 'Head in the stars. Boots on the ground.',
+    quote: 'We are all made of stardust. You are made of bruises.',
+  },
 ];
 
 export const byId = (id) => CHARACTERS.find((c) => c.id === id);
