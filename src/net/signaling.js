@@ -3,7 +3,7 @@
 // text/plain, which needs no CORS preflight. While developing, Vite serves a local copy.
 // Some company networks block vercel.app. Deploy worker/ to Cloudflare Workers (see README) and put its
 // address here: every player then uses it instead of Vercel (both players must use the same one).
-const WORKER_URL = ''; // e.g. 'https://tdp-fighter-rooms.your-name.workers.dev'
+const WORKER_URL = 'https://tdp-fighter-rooms.yotam-tdp-fighter.workers.dev';
 
 const host = location.hostname;
 const local = ['localhost', '127.0.0.1', '[::1]'].includes(host);
