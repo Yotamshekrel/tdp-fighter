@@ -44,7 +44,7 @@ function cleanData(type, d = {}) {
   }
   const match = {
     ...base,
-    mode: ['1p', '2p', 'online', 'tournament'].includes(d.mode) ? d.mode : null,
+    mode: ['1p', '2p', 'tournament'].includes(d.mode) ? d.mode : null,
     difficulty: ['easy', 'normal', 'hard', 'extreme'].includes(d.difficulty) ? d.difficulty : null,
     arena: slug(d.arena),
     p1: slug(d.p1), p2: slug(d.p2),

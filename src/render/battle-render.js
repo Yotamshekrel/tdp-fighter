@@ -4,7 +4,6 @@ import { getArena, drawArena } from './backgrounds.js';
 import { drawAnnounce, drawCutIn } from './hud.js';
 import { drawFrame } from './sprites.js';
 import { postProcess } from './post.js';
-import { getState, setState } from '../game/rng.js';
 
 const { W, H, GROUND_Y } = VIEW;
 
@@ -23,15 +22,14 @@ export function drawFighter(g, f, bank, battle, reflect = 0) {
   const x = f.x + jitter;
   // remember where the hand, eyes and mouth are on screen, so special attacks can start from them
   const V = spr.vis;
-  // (online fights skip this: it depends on what has been drawn so far, which differs per computer)
-  f.vis = V && !tint && !battle.deterministic
+  f.vis = V && !tint
     ? {
       hand: { x: f.x + f.facing * sx * V.hand[0], y: f.y + sy * V.hand[1] },
       eye: { x: f.x + f.facing * sx * V.eye[0], y: f.y + sy * V.eye[1] },
       mouth: { x: f.x + f.facing * sx * V.mouth[0], y: f.y + sy * V.mouth[1] },
       dir: { x: f.facing * V.forearm[0], y: V.forearm[1] },
     }
-    : battle.deterministic ? undefined : f.vis;
+    : f.vis;
   if (reflect > 0 && spr.hi) {
     // a faint mirror image on the floor, fading with the height of the fighter above the ground
     const lift = Math.max(0, GROUND_Y - f.y);
@@ -103,23 +101,8 @@ function updateCamera(battle) {
   return cam;
 }
 
-// Drawing may call rand() for sparkle and flicker. It gets its own stream so that it can never change
-// the random numbers the simulation sees (two computers draw at different times, but must stay in step).
-let renderRng = 0x51ed270b;
-
 /** opts.hud = false draws just the arena and fighters (title backdrop). */
 export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}) {
-  const simRng = getState();
-  setState(renderRng);
-  try {
-    drawBattleInner(g, battle, bank, hud, frame, debug, opts);
-  } finally {
-    renderRng = getState();
-    setState(simRng);
-  }
-}
-
-function drawBattleInner(g, battle, bank, hud, frame, debug, opts) {
   const arena = getArena(battle.arena);
   const [a, b] = battle.fighters;
   const freeze = battle.freeze.t > 0;

@@ -20,9 +20,7 @@ export class VsScene {
   update() {
     this.t++;
     const m = this.game.input.menu;
-    // (online: nobody can skip it, so both computers reach the fight together)
-    const skip = this.params.mode !== 'online' && this.t > 30 && (m.confirm || m.click);
-    if (this.t > 170 || skip) this.game.go('fight', this.params);
+    if (this.t > 170 || (this.t > 30 && (m.confirm || m.click))) this.game.go('fight', this.params);
   }
   draw(g) {
     const { W, H } = VIEW;

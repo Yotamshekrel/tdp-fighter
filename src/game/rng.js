@@ -5,9 +5,6 @@ export function seed(n) {
   state = n >>> 0;
 }
 
-export const getState = () => state;
-export const setState = (n) => { state = n >>> 0; };
-
 /** Random float in [0, 1). */
 export function rand() {
   state = (state + 0x6d2b79f5) >>> 0;

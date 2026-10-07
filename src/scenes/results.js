@@ -6,7 +6,6 @@ import { drawMenu, hitTest, GOLD } from './ui.js';
 import { drawFrame, drawFighterArt } from '../render/sprites.js';
 import { COLORS, glass, glow, menuBackdrop, vignette, easeOut, clamp01 } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
-import { startParams } from './char-select.js';
 
 const ITEMS = ['REMATCH', 'CHARACTER SELECT', 'MAIN MENU'];
 
@@ -16,8 +15,6 @@ export class ResultsScene {
   }
   enter(params) {
     this.params = params;
-    this.online = params.mode === 'online';
-    this.wantRematch = false;
     this.t = 0;
     this.sel = 0;
     this.rects = [];
@@ -28,43 +25,14 @@ export class ResultsScene {
     this.game.audio.playMusic('menu');
     this.game.audio.play('win');
   }
-  get items() {
-    if (!this.online) return ITEMS;
-    return [this.wantRematch ? (this.game.net.remoteRematch ? 'STARTING...' : 'WAITING FOR OPPONENT...') : this.game.net.remoteRematch ? 'REMATCH  (OPPONENT IS READY)' : 'REMATCH', 'LEAVE'];
-  }
-
-  /** Online: both players have to ask for a rematch; the host then starts it with a fresh seed. */
-  updateOnline() {
-    const { input, audio } = this.game;
-    const net = this.game.net, m = input.menu;
-    if (net.start) return this.game.go('vs', startParams(net)); // the host started the rematch
-    if (this.wantRematch && net.remoteRematch && net.role === 'host') {
-      const p = this.params;
-      const params = { chars: p.chars, mode: 'online', arena: p.arena, arenaChoice: p.arenaChoice, seed: (Math.random() * 0x100000000) >>> 0 };
-      net.remoteRematch = false;
-      net.sendCtl({ t: 'start', chars: params.chars.map((c) => c.id), arena: params.arena, arenaChoice: params.arenaChoice, seed: params.seed });
-      return this.game.go('vs', params);
-    }
-    if (this.t < 30) return;
-    if (m.back) return this.game.endOnline('YOU LEFT');
-    if (m.confirm || (m.click && hitTest(input.pointer, this.rects) >= 0)) {
-      audio.play('select');
-      if (this.sel === 1) return this.game.endOnline('YOU LEFT');
-      this.wantRematch = !this.wantRematch;
-      net.sendCtl({ t: 'rematch', on: this.wantRematch });
-    }
-  }
-
   update() {
     this.t++;
     const { input, audio } = this.game;
     const m = input.menu;
-    const items = this.items;
     const hov = hitTest(input.pointer, this.rects);
     if (input.pointer.moved && hov >= 0) this.sel = hov;
-    if (m.up) { this.sel = (this.sel + items.length - 1) % items.length; audio.play('move'); }
-    if (m.down) { this.sel = (this.sel + 1) % items.length; audio.play('move'); }
-    if (this.online) return this.updateOnline();
+    if (m.up) { this.sel = (this.sel + ITEMS.length - 1) % ITEMS.length; audio.play('move'); }
+    if (m.down) { this.sel = (this.sel + 1) % ITEMS.length; audio.play('move'); }
     if (this.t < 30) return;
     if (m.confirm || (m.click && hov >= 0)) {
       audio.play('select');
@@ -136,14 +104,13 @@ export class ResultsScene {
       }
       // text card
       glass(g, 262, 22, 196, 112, { accent: side.a });
-      const me = mode === 'online' ? this.game.net?.side : 0;
-      const who = mode === '1p' || mode === 'online' ? (winner === me ? 'YOU WIN!' : 'YOU LOSE...') : `${w.name} WINS!`;
+      const who = mode === '1p' ? (winner === 0 ? 'YOU WIN!' : 'YOU LOSE...') : `${w.name} WINS!`;
       drawText(g, who, 360, 32, { scale: 3.4, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
       drawText(g, w.name, 360, 66, { scale: 2, align: 'center', color: ['#ffffff', side.b], outline: 'rgba(5,6,24,0.8)' });
       wrap(`"${w.quote}"`.toUpperCase(), 30).forEach((ln, i) => drawText(g, ln, 360, 88 + i * 12, { scale: 1.3, align: 'center', color: '#ffe9a0', italic: true }));
       if (t > 20 && t % 120 < 90) speechBubble(g, 'WOOHOO!', 150, 54);
     }
-    this.rects = drawMenu(g, this.items, this.sel, 360, 150, t, { gap: 26, scale: this.online ? 0.95 : 1.1, width: 170 });
+    this.rects = drawMenu(g, ITEMS, this.sel, 360, 150, t, { gap: 26, scale: 1.1, width: 170 });
     vignette(g, 0.4);
     postProcess(g, t, { bloom: 0.22 });
   }

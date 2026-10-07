@@ -6,8 +6,6 @@
 import { VIEW } from '../config.js';
 
 let seq = 0;
-/** Entity ids restart for every online match, so both computers number them the same way. */
-export const resetEntityIds = () => { seq = 0; };
 
 export class Entity {
   constructor(o = {}) {

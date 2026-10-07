@@ -11,17 +11,6 @@ import { COLORS, glass, glow, rrPath, vgrad, menuBackdrop } from '../render/ui-k
 import { postProcess } from '../render/post.js';
 import { hints } from './ui.js';
 
-/** The match the host announced, as scene params (the guest builds it from the host's message). */
-export function startParams(net) {
-  const m = net.start;
-  net.start = null;
-  net.remoteRematch = false;
-  return {
-    chars: m.chars.map((id) => CHARACTERS.find((c) => c.id === id)),
-    mode: 'online', arena: m.arena, arenaChoice: m.arenaChoice, seed: m.seed,
-  };
-}
-
 const COLS = 7;
 const CELL_W = 34, CELL_H = 42, PITCH_X = 38, PITCH_Y = 46;
 const GRID_X = Math.round((VIEW.W - (COLS * PITCH_X - 5)) / 2);
@@ -56,39 +45,15 @@ export class CharSelectScene {
     this.t = 0;
     this.cur = [...this.last];
     this.locked = [false, false];
-    this.stage = mode === '2p' ? 'both' : mode === 'online' ? 'online' : 'p1'; // 'p1' -> 'cpu' for 1P / demo (a tournament only picks P1)
+    this.stage = mode === '2p' ? 'both' : 'p1'; // 'p1' -> 'cpu' for 1P / demo (a tournament only picks P1)
     this.doneT = 0;
     this.lockT = [0, 0];
     this.moveT = [0, 0]; // when each cursor last moved (for the figure swap animation)
     this.game.input.mode = mode === '2p' ? '2p' : '1p';
     this.game.audio.playMusic('menu');
-    if (mode === 'online') {
-      // Each player picks only their own fighter (host on the left, guest on the right).
-      this.net = this.game.net;
-      this.side = this.net.side;
-      this.sent = '';
-      this.net.start = null;
-      this.syncRemote(true);
-    }
-  }
-
-  /** Online: mirror what the other player is doing (the session keeps it even before this scene opens). */
-  syncRemote(first = false) {
-    const o = 1 - this.side, r = this.net.remote;
-    if (r.cur < 0) { this.locked[o] = false; return; }
-    if (this.cur[o] !== r.cur) { this.cur[o] = r.cur; this.moveT[o] = this.t; }
-    if (r.locked && !this.locked[o] && !first) { this.lockT[o] = this.t; this.game.audio.play('select'); }
-    this.locked[o] = r.locked;
-  }
-
-  /** Which fighters are on screen (the other online player's slot stays '?' until they pick). */
-  shown(i) {
-    if (this.stage === 'online') return i === this.side || this.net.remote.cur >= 0;
-    return i === 0 || this.stage !== 'p1';
   }
 
   label(i) {
-    if (this.mode === 'online') return i === this.side ? 'YOU' : 'OPP';
     if (this.mode === 'demo') return `CPU${i + 1}`;
     if (this.mode === '1p' && i === 1) return 'CPU';
     return `${i + 1}P`;
@@ -124,11 +89,9 @@ export class CharSelectScene {
     this.t++;
     const { input, audio } = this.game;
     if (this.doneT) {
-      if (this.stage === 'online') return this.updateOnlineDone();
       if (++this.doneT > 50) this.start();
       return;
     }
-    if (this.stage === 'online') return this.updateOnline();
     // Which cursor do the controls drive right now?
     const drive = (i, m) => {
       if (this.locked[i]) {
@@ -187,58 +150,6 @@ export class CharSelectScene {
     if (this.locked[1]) this.doneT = 1;
   }
 
-  updateOnline() {
-    const { input, audio } = this.game;
-    const me = this.side;
-    this.syncRemote();
-    const drive = input.p[0];
-    if (this.locked[me]) {
-      if (drive.back) { this.locked[me] = false; audio.play('back'); }
-    } else {
-      if (drive.left) this.move(me, -1, 0);
-      if (drive.right) this.move(me, 1, 0);
-      if (drive.up) this.move(me, 0, -1);
-      if (drive.down) this.move(me, 0, 1);
-      if (drive.confirm || input.menu.confirm) this.lock(me);
-      else if (drive.random) this.lock(me, true);
-      else if (input.menu.back) { audio.play('back'); return this.game.go('mode', { page: 'play' }); } // leaves the session
-      const cell = this.cellAt(input.pointer);
-      if (cell >= 0) {
-        if (input.pointer.moved && this.cur[me] !== cell) { this.cur[me] = cell; this.moveT[me] = this.t; audio.play('move'); }
-        if (input.pointer.clicked) { this.cur[me] = cell; this.lock(me); }
-      }
-    }
-    const pick = `${this.cur[me]}:${this.locked[me]}`;
-    if (pick !== this.sent) {
-      this.sent = pick;
-      this.net.sendCtl({ t: 'pick', cur: this.cur[me], locked: this.locked[me] });
-    }
-    if (this.locked[0] && this.locked[1] && this.net.remote.cur >= 0) this.doneT = 1;
-  }
-
-  /** Both are locked in: the host announces the match, the guest waits for that announcement. */
-  updateOnlineDone() {
-    this.doneT++;
-    const net = this.net;
-    if (net.role === 'host') {
-      if (this.doneT > 50) {
-        const params = {
-          chars: [CHARACTERS[this.cur[0]], CHARACTERS[this.cur[1]]],
-          mode: 'online',
-          arenaChoice: this.arena,
-          arena: this.arena === 'random' ? pick(ARENAS).id : this.arena,
-          seed: (Math.random() * 0x100000000) >>> 0,
-        };
-        this.last = [...this.cur];
-        net.sendCtl({ t: 'start', chars: params.chars.map((c) => c.id), arena: params.arena, arenaChoice: params.arenaChoice, seed: params.seed });
-        this.game.go('vs', params);
-      }
-    } else if (net.start) {
-      this.last = [...this.cur];
-      this.game.go('vs', startParams(net));
-    }
-  }
-
   backToMenu() {
     this.game.go('mode', { page: this.mode === '2p' ? 'arena' : 'level', mode: this.mode });
   }
@@ -266,7 +177,7 @@ export class CharSelectScene {
 
     // ---- both fighters, full body --------------------------------------------------------
     for (let i = 0; i < 2; i++) {
-      const visible = this.shown(i);
+      const visible = i === 0 || this.stage !== 'p1';
       const side = COLORS.side[i];
       const x = FIG_X[i];
       glow(g, x, 150, 120, side.glow, visible ? 0.4 : 0.12);
@@ -329,12 +240,12 @@ export class CharSelectScene {
     });
     // cursors
     for (let i = 0; i < 2; i++) {
-      const active = this.stage === 'both' || (this.stage === 'p1' ? i === 0 : this.stage === 'online' ? this.shown(i) : true);
+      const active = this.stage === 'both' || (this.stage === 'p1' ? i === 0 : true);
       if (!active) continue;
       const k = this.cur[i];
       const x = GRID_X + (k % COLS) * PITCH_X, y = GRID_Y + Math.floor(k / COLS) * PITCH_Y;
       const side = COLORS.side[i];
-      const same = this.cur[0] === this.cur[1] && this.stage !== 'p1' && this.shown(0) && this.shown(1);
+      const same = this.cur[0] === this.cur[1] && this.stage !== 'p1';
       const o = same ? (i === 0 ? -1.5 : 1.5) : 0;
       const pulse = this.locked[i] ? 1 : 0.55 + 0.45 * Math.sin(this.t * 0.25);
       g.save();
@@ -357,7 +268,7 @@ export class CharSelectScene {
 
     // ---- info cards: each shown player's special move --------------------------------------
     const px = GRID_X - 2, pw = COLS * PITCH_X - 1, py = GRID_Y + Math.ceil(CHARACTERS.length / COLS) * PITCH_Y + 2, ph = H - py - 22;
-    const show = this.stage === 'p1' ? [0] : this.stage === 'online' ? [0, 1].filter((i) => this.shown(i)) : [0, 1];
+    const show = this.stage === 'p1' ? [0] : [0, 1];
     show.forEach((i) => {
       const w = show.length === 1 ? pw : pw / 2 - 2;
       const x = show.length === 1 ? px : px + i * (w + 4);
@@ -376,11 +287,7 @@ export class CharSelectScene {
     if (this.mode === '2p') parts = [['F', 'PICK'], ['G', 'BACK'], ['H', 'RANDOM'], ['K', 'P2 PICK']];
     else parts = [['Z', 'PICK'], ['X', 'BACK'], ['C', 'RANDOM'], ['↑↓◀▶', 'MOVE']];
     hints(g, parts, H - 15);
-    if (this.mode === 'online') {
-      const waiting = this.locked[this.side] && !this.locked[1 - this.side];
-      const t = this.doneT ? 'GET READY...' : waiting ? 'WAITING FOR YOUR OPPONENT TO PICK' : this.net.remote.cur < 0 ? 'WAITING FOR YOUR OPPONENT' : 'PICK YOUR FIGHTER';
-      drawText(g, t, W / 2, 28, { scale: 1.3, align: 'center', color: COLORS.dim });
-    } else if (this.mode !== '2p') {
+    if (this.mode !== '2p') {
       const t = this.stage === 'p1' ? (this.mode === 'demo' ? 'PICK CPU 1' : 'PICK YOUR FIGHTER') : this.mode === 'demo' ? 'PICK CPU 2' : 'PICK YOUR OPPONENT';
       drawText(g, t, W / 2, 28, { scale: 1.3, align: 'center', color: COLORS.dim });
     }

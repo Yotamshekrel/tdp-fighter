@@ -11,11 +11,7 @@ import { dim, drawMenu, hitTest, GOLD } from './ui.js';
 import { glass } from '../render/ui-kit.js';
 import { drawControlsCard } from './controls-card.js';
 import { trackMatch } from '../analytics.js';
-import { seed } from '../game/rng.js';
-import { resetEntityIds } from '../game/entities.js';
-import { Lockstep, delayFor, packInput, stateHash } from '../net/lockstep.js';
 
-const STALL_LIMIT_MS = 10000; // online: how long to wait for the other player before giving up
 const CARD_FRAMES = 6 * 60; // the controls card auto-continues after 6 s
 
 const PAUSE_ITEMS = ['RESUME', 'RESTART', 'CHARACTER SELECT', 'MAIN MENU'];
@@ -33,38 +29,21 @@ export class FightScene {
     const input = this.game.input;
     input.mode = mode === '2p' ? '2p' : '1p';
     const human = (i) => new HumanController(input, i);
-    this.online = mode === 'online';
-    this.ls = null;
-    this.netError = '';
-    this.stallT0 = 0; // when the current wait for the other player began (ms)
-    this.leavePrompt = 0; // frames left on the "press Esc again to leave" prompt
-    let controllers =
+    const controllers =
       mode === '2p' ? [human(0), human(1)] :
       mode === 'demo' ? [new CpuBot(difficulty), new CpuBot(difficulty)] :
       [human(0), new CpuBot(difficulty)];
-    if (this.online) {
-      // Both computers run this same fight: same seed, and every frame's inputs for both fighters.
-      const net = this.game.net;
-      seed(params.seed);
-      resetEntityIds();
-      this.ls = new Lockstep({ side: net.side, delay: delayFor(net.rtt), match: params.seed, send: () => {} });
-      net.attachLockstep(this.ls);
-      net.onHash = (f, h) => this.ls.addRemoteHash(f, h);
-      controllers = [this.ls.controller(0), this.ls.controller(1)];
-    }
-    this.battle = new Battle({ chars, controllers, arena, deterministic: this.online });
-    // (online: only the host reports the match, so it is counted once)
-    this.tracker = mode === 'demo' || (this.online && this.game.net.side === 1) ? null : trackMatch({ mode, difficulty, arena, chars });
+    this.battle = new Battle({ chars, controllers, arena });
+    this.tracker = mode === 'demo' ? null : trackMatch({ mode, difficulty, arena, chars });
     this.hud = new Hud();
     this.pauseItems = mode === 'tournament' ? TOURNAMENT_PAUSE_ITEMS : PAUSE_ITEMS;
     this.paused = false;
     this.sel = 0;
     this.t = 0;
     this.endT = 0;
-    this.errT = 0;
     this.rects = [];
     // Every match starts with a reminder of the buttons (not in CPU demos, and only for a tournament's first fight).
-    this.card = mode === 'demo' || this.online || (params.tournament && params.tournament.round > 0) ? -1 : 0;
+    this.card = mode === 'demo' || (params.tournament && params.tournament.round > 0) ? -1 : 0;
     this.game.audio.playMusic(getArena(arena).music); // each arena has its own track
   }
 
@@ -74,7 +53,6 @@ export class FightScene {
     const m = input.menu;
     const demo = this.params.mode === 'demo';
     audio.muffle(this.paused);
-    if (this.online) return this.updateOnline();
 
     if (this.card >= 0) {
       this.card++;
@@ -104,11 +82,6 @@ export class FightScene {
     }
 
     this.battle.update();
-    this.afterStep();
-  }
-
-  /** Everything that follows a simulated frame: sounds, HUD, and the end of the match. */
-  afterStep() {
     for (const ev of this.battle.events) {
       this.hud.onEvent(ev);
       this.playEvent(ev);
@@ -123,42 +96,6 @@ export class FightScene {
         this.game.go('bracket', { tournament: this.params.tournament, arenaChoice: this.params.arenaChoice, outcome });
       } else this.game.go('results', { ...this.params, winner, stats: this.battle.stats });
     }
-  }
-
-  /** Online: no pause. A frame only runs once the other player's inputs for it have arrived. */
-  updateOnline() {
-    const { input } = this.game;
-    const ls = this.ls, net = this.game.net;
-    if (this.leavePrompt > 0) this.leavePrompt--;
-    if (input.menu.pause) {
-      if (this.leavePrompt > 0) return this.game.endOnline('YOU LEFT THE MATCH');
-      this.leavePrompt = 180;
-    }
-    if (this.netError) {
-      if (++this.errT > 150) this.game.endOnline(this.netError);
-      return;
-    }
-    ls.flush();
-    if (!ls.ready()) {
-      // (measured in real time: a throttled or busy tab must not count as fast-forwarded stalling)
-      this.stallT0 ||= performance.now();
-      if (performance.now() - this.stallT0 > STALL_LIMIT_MS) this.netError = 'OPPONENT NOT RESPONDING';
-      return;
-    }
-    this.stallT0 = 0;
-    ls.sample(this.leavePrompt > 0 ? 0 : packInput(input.state(0)));
-    this.battle.update();
-    ls.advance();
-    ls.flush();
-    const frame = this.battle.frame;
-    if (frame % 60 === 0) {
-      const h = stateHash(this.battle);
-      ls.addHash(frame, h);
-      net.sendCtl({ t: 'hash', f: frame, h });
-    }
-    if (ls.desync !== null) this.netError = 'OUT OF SYNC - MATCH ENDED';
-    if (this.battle.phase === 'matchEnd') net.flushFor(3000); // the other side may still need our last inputs
-    this.afterStep();
   }
 
   choose() {
@@ -205,21 +142,6 @@ export class FightScene {
     }
   }
 
-  drawOnline(g) {
-    const { W } = VIEW;
-    const net = this.game.net;
-    const ping = Number.isFinite(net?.rtt) ? `${Math.round(net.rtt)} MS` : '-- MS';
-    drawText(g, `ONLINE  ${ping}${net?.route === 'relay' ? '  RELAY' : ''}`, W - 4, 3, { scale: 1, align: 'right', color: '#ffffff', alpha: 0.55 });
-    const say = (text, y, color = '#ffffff') => {
-      g.fillStyle = 'rgba(5,6,24,0.7)';
-      g.fillRect(0, y - 4, W, 22);
-      drawText(g, text, W / 2, y, { scale: 2, align: 'center', color, outline: 'rgba(5,6,24,0.9)' });
-    };
-    if (this.netError) return say(this.netError, 110, '#ff6a5a');
-    if (this.leavePrompt > 0) return say('PRESS ESC AGAIN TO LEAVE THE MATCH', 110, '#ffd23f');
-    if (this.stallT0 && performance.now() - this.stallT0 > 400) say(this.t % 60 < 40 ? 'WAITING FOR OPPONENT...' : 'WAITING FOR OPPONENT', 110);
-  }
-
   draw(g) {
     const { W } = VIEW;
     drawBattle(g, this.battle, this.game.bank, this.hud, this.t, this.game.debug);
@@ -230,7 +152,6 @@ export class FightScene {
     if (this.params.mode === 'demo' && this.t % 60 < 40) {
       drawText(g, 'DEMO - PRESS ANY BUTTON TO EXIT', W / 2, 44, { scale: 1.3, align: 'center', color: '#ffffff', outline: 'rgba(5,6,24,0.9)' });
     }
-    if (this.online) this.drawOnline(g);
     if (this.paused) {
       dim(g, 0.62);
       glass(g, W / 2 - 100, 62, 200, 130, { accent: '#ffd23f' });
