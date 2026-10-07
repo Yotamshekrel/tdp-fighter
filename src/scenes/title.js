@@ -91,7 +91,7 @@ export class TitleScene {
     rule.addColorStop(1, 'rgba(255,210,63,0)');
     g.fillStyle = rule;
     g.fillRect(cx - 130, 128, 260, 1.2);
-    drawText(g, '18 FRIENDS. 1 CHAMPION.', cx, 133, { scale: 1.5, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.7)', italic: true });
+    drawText(g, '19 FRIENDS. 1 CHAMPION.', cx, 133, { scale: 1.5, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.7)', italic: true });
     if (this.t % 56 < 38) drawText(g, 'PRESS START', cx, 154, { scale: 2.4, align: 'center', color: ['#ffffff', '#fff3a0', '#ffd23f'], outline: '#150a04', glow: '#ffb62e' });
     hints(g, [['ENTER', 'START'], ['CLICK', 'START'], ['M', 'MUTE']], H - 15);
     const demo = this.demo.fighters.map((f) => f.def.name).join('  VS  ');

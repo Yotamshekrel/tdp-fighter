@@ -30,11 +30,12 @@ import jackpotRain from './jackpot-rain.js';
 import baguette from './baguette.js';
 import giantStomp from './giant-stomp.js';
 import soundBlast from './sound-blast.js';
+import kaderLecture from './kader-lecture.js';
 
 export const SPECIALS = {
   laserEyes, babyRattle, caneWhack, trophyBoomerang, magicBolt, handFlurry,
   sprintDash, surfWave, tequilaToss, acBlast, bugSwarm, bearHug,
-  dessertBarrage, spineChoke, jackpotRain, baguette, giantStomp, soundBlast,
+  dessertBarrage, spineChoke, jackpotRain, baguette, giantStomp, soundBlast, kaderLecture,
 };
 
 export function getSpecial(type) {

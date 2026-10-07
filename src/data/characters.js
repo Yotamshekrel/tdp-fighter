@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // THE ROSTER. Everything about a character lives here.
 //
-// To add a 19th fighter:
+// To add another fighter:
 //   1. drop a photo in assets/photos/<Name>.jpg  (any of .jpg/.jpeg/.png)
 //   2. add an entry below. `special.type` can reuse any existing special
 //      (see src/game/specials/index.js) or point to a new one.
@@ -9,6 +9,7 @@
 // silhouette if there's no `look` either), so the game never crashes.
 //
 // Fields
+//   isNew     optional: true shows a NEW badge on the select screen
 //   id        unique, lowercase; photo is loaded from photos/<id>.jpg
 //   name      shown in menus/HUD (keep it short)
 //   face      face crop in the photo, normalised 0..1 { x, y, h } (centre +
@@ -236,6 +237,17 @@ export const CHARACTERS = [
     special: { type: 'soundBlast', name: 'Mic Drop', description: 'Loves singing. Giant speakers plus sound waves equals you, far away.' },
     bio: 'Sings in the shower. And everywhere.',
     quote: 'Thank you, goodnight!',
+  },
+  {
+    id: 'nethanel', name: 'Nethanel', isNew: true,
+    face: { x: 0.5, y: 0.2, h: 0.3 },
+    look: { skin: '#e0a47c', hair: 'short', hairColor: '#3a2a20', eyes: '#3a2416', brows: 2, beard: 'short', beardColor: '#3a2a20', jaw: 1.0 },
+    body: { build: 'muscular', height: 1.02, top: 'tee', bottom: 'pants', shoes: 'boots' },
+    colors: { shirt: '#1c2440', shirt2: '#4a4a4a', pants: '#56683a', shoes: '#1a1a1a' },
+    stats: { speed: 0.99, jump: 1.00, reach: 1 },
+    special: { type: 'kaderLecture', name: 'Lekader', description: 'Makes you give a lecture in the guild. Forced to Lekader, slide after slide. Cannot be blocked (but can be jumped).' },
+    bio: 'Born to Lekader. Never stops Kadering.',
+    quote: 'Thank you for coming to my Kader!',
   },
 ];
 

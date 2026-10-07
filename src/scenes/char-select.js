@@ -11,11 +11,26 @@ import { COLORS, glass, glow, rrPath, vgrad, menuBackdrop } from '../render/ui-k
 import { postProcess } from '../render/post.js';
 import { hints } from './ui.js';
 
-const COLS = 6;
-const CELL_W = 38, CELL_H = 42, PITCH_X = 43, PITCH_Y = 46;
+const COLS = 7;
+const CELL_W = 34, CELL_H = 42, PITCH_X = 38, PITCH_Y = 46;
 const GRID_X = Math.round((VIEW.W - (COLS * PITCH_X - 5)) / 2);
 const GRID_Y = 40;
 const FIG_X = [60, VIEW.W - 60];
+
+/** A small pulsing "NEW" pill whose top edge is at y and whose right edge (or centre) is at x. */
+function newBadge(g, x, y, t, scale = 1, center = false) {
+  const w = (textWidth('NEW', 1.05 * scale) + 6 * scale), h = 9 * scale;
+  if (center) x += w / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.18);
+  g.save();
+  g.shadowColor = '#ff3a3a';
+  g.shadowBlur = (3 + pulse * 5) * VIEW.SCALE;
+  rrPath(g, x - w, y, w, h, 3 * scale);
+  g.fillStyle = vgrad(g, y, y + h, [[0, '#ff7a3a'], [1, '#e0182c']]);
+  g.fill();
+  g.restore();
+  drawText(g, 'NEW', x - w / 2, y + 1.2 * scale, { scale: 1.05 * scale, align: 'center', color: '#ffffff', weight: 800, shadow: 'rgba(0,0,0,0.5)' });
+}
 
 export class CharSelectScene {
   constructor(game) {
@@ -191,8 +206,11 @@ export class CharSelectScene {
       drawFighterArt(g, bank, c.id, x + (i === 0 ? -1 : 1) * (1 - pop) * 14, 238 + bob, 180, i === 1);
       g.restore();
       if (this.locked[i] && this.t - this.lockT[i] < 10) glow(g, x, 150, 130, '#ffffff', 1 - (this.t - this.lockT[i]) / 10);
-      // name plate
-      drawText(g, c.name, x, 243, { scale: 2.4, align: 'center', color: this.locked[i] ? ['#ffffff', '#fff3a0', '#ffd23f'] : ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.9)', glow: this.locked[i] ? '#ffb62e' : side.glow });
+      // name plate (long names shrink to fit beside the grid)
+      let nameScale = 2.4;
+      while (nameScale > 1.4 && textWidth(c.name, nameScale) > 96) nameScale -= 0.1;
+      drawText(g, c.name, x, 243 + (2.4 - nameScale) * 3, { scale: nameScale, align: 'center', color: this.locked[i] ? ['#ffffff', '#fff3a0', '#ffd23f'] : ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.9)', glow: this.locked[i] ? '#ffb62e' : side.glow });
+      if (c.isNew) newBadge(g, x, 228, this.t, 1.3, true);
       if (this.locked[i]) drawText(g, 'READY!', x, 34, { scale: 1.9, align: 'center', color: this.t % 24 < 16 ? ['#ffffff', side.b] : '#ffffff', outline: 'rgba(5,6,24,0.9)', glow: side.glow });
     }
 
@@ -215,7 +233,10 @@ export class CharSelectScene {
         g.fillRect(x, y, CELL_W, CELL_H);
         g.restore();
       }
-      drawText(g, c.name, x + CELL_W / 2, y + CELL_H - 10, { scale: 1.05, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.9)', weight: 800 });
+      let cellScale = 1.05;
+      while (cellScale > 0.7 && textWidth(c.name, cellScale) > CELL_W - 2) cellScale -= 0.05; // long names shrink to fit the cell
+      drawText(g, c.name, x + CELL_W / 2, y + CELL_H - 10, { scale: cellScale, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.9)', weight: 800 });
+      if (c.isNew) newBadge(g, x + CELL_W - 1, y + 1, this.t);
     });
     // cursors
     for (let i = 0; i < 2; i++) {
@@ -246,7 +267,7 @@ export class CharSelectScene {
     }
 
     // ---- info cards: each shown player's special move --------------------------------------
-    const px = GRID_X - 2, pw = COLS * PITCH_X - 1, py = GRID_Y + 3 * PITCH_Y + 2, ph = H - py - 22;
+    const px = GRID_X - 2, pw = COLS * PITCH_X - 1, py = GRID_Y + Math.ceil(CHARACTERS.length / COLS) * PITCH_Y + 2, ph = H - py - 22;
     const show = this.stage === 'p1' ? [0] : [0, 1];
     show.forEach((i) => {
       const w = show.length === 1 ? pw : pw / 2 - 2;

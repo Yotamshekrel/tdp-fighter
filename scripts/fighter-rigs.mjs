@@ -48,6 +48,7 @@ export const RIGS = {
   maya: { chin: 150, joints: { shoulderB: [-120, 265], elbowB: [-148, 406], handB: [-160, 545] } },
   mor: { chin: 190 },
   nadav: { chin: 185 },
+  nethanel: { chin: 170 },
   noa: { chin: 150 },
   ofek: { chin: 185 },
   ofir: { chin: 200 },
