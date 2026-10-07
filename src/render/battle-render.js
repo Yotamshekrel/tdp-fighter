@@ -11,9 +11,9 @@ const { W, H, GROUND_Y } = VIEW;
 export function drawFighter(g, f, bank, battle, reflect = 0) {
   const { pose, frame } = f.anim();
   const flashTint = f.flash > 0 && f.flash % 2 ? 'white' : f.frozen > 0 ? 'ice' : null;
-  // grown-up mode: the more hurt, the paler (a cached copy of the frame: filtering on every draw is too slow)
+  // grown-up mode: the more hurt, the more wounds painted on the frame (damage.js; a cached copy of it per level)
   const hp = Math.max(0, f.health) / RULES.maxHealth;
-  const hurtLevel = battle.gore ? Math.round(Math.max(0, (0.55 - hp) / 0.55) * 4) : 0;
+  const hurtLevel = battle.gore ? (hp < 0.18 ? 4 : hp < 0.35 ? 3 : hp < 0.55 ? 2 : hp < 0.75 ? 1 : 0) : 0;
   const tint = flashTint || (hurtLevel > 0 ? `hurt${hurtLevel}` : null);
   const giant = f.scale > 1.9; // a giant fighter gets frames twice as dense so it stays sharp
   const spr = bank.frame(f.def.id, pose, frame, f.costume, tint, giant);

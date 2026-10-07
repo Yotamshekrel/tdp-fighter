@@ -20,6 +20,7 @@ import { pack, R, Gc, B as Bch, loadImage, buildHead, silhouetteHead, agedHead, 
 import { buildFace, sampleSkin } from './face-builder.js';
 import { hexToRgb, shade, mix } from './pixel.js';
 import { loadPuppet, buildPuppetFrame, tintHi } from './puppet.js';
+import { damagedFrame } from './damage.js';
 
 export const FRAME = { W: 112, H: 136, AX: 56, AY: 122 };
 
@@ -265,7 +266,9 @@ export class SpriteBank {
     if (fr) return fr;
     if (tint) {
       const base = this.frame(id, pose, idx, costume, null, big);
-      fr = { ...base, canvas: base.hi ? tintHi(base.canvas, tint) : tintCanvas(base.canvas, tint) };
+      // (grown-up mode: `hurtN` is a battered fighter, N = 1..4 how badly: wounds painted on the frame, see damage.js)
+      const hurt = tint.startsWith('hurt') ? Number(tint.slice(4)) : 0;
+      fr = { ...base, canvas: hurt && base.hi ? damagedFrame(base, hurt, id) : base.hi ? tintHi(base.canvas, tint) : tintCanvas(base.canvas, tint) };
     } else if (ch.puppet) {
       fr = buildPuppetFrame(ch.puppet, getPose(pose, idx), FRAME, VIEW.SCALE * (big ? 2 : 1), costume || {}, pose, idx);
     } else {

@@ -7,9 +7,6 @@ import { drawFrame } from './sprites.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
-// Blotches of blood that soak into the clothes, in the order they appear: [x, y, radius]
-const BLOTCH = [[2, -36, 3.6], [-3, -29, 3], [4, -43, 3.2], [-2, -40, 4.2], [3, -24, 3.4], [-4, -33, 3.6], [1, -20, 3]];
-
 function blob(g, x, y, r, a = 0.78, rot = 0) {
   // an uneven splash: a few overlapping lobes, darker in the middle
   for (let k = 0; k < 4; k++) {
@@ -32,96 +29,15 @@ export function leanOf(f, hp, frame) {
   return k * (0.075 + 0.02 * Math.sin(frame * 0.12 + f.side));
 }
 
-/** Cuts, bruises and blood on the body. V = where the eyes and mouth are on this frame (sprite.vis). */
-export function drawWounds(g, f, V, hp, frame) {
-  const sev = clamp01(1 - hp);
-  if (sev < 0.08 && !f.wounds.length) return;
-  const eye = V?.eye ?? [4, -66], mouth = V?.mouth ?? [6, -58];
+/** Splashes of blood on a winner after a fatality (the wounds of a hurt fighter are painted into the sprite, damage.js). */
+export function drawWounds(g, f) {
+  if (!f.wounds.length) return;
   g.save();
-  g.lineCap = 'round';
-  // blood soaking into the clothes
-  const nb = Math.min(BLOTCH.length, Math.floor(sev * 8));
-  for (let i = 0; i < nb; i++) blob(g, BLOTCH[i][0], BLOTCH[i][1], BLOTCH[i][2] * (0.55 + sev * 0.45), 0.7, i * 1.3);
-  // the wounds themselves
   for (const w of f.wounds) {
-    if (w.k === 'stain') {
-      blob(g, w.x, w.y, w.s, 0.8, w.sd);
-      g.fillStyle = 'rgba(170, 14, 30, 0.8)';
-      g.fillRect(w.x + w.s * 1.3, w.y - w.s * 0.6, 0.9, 0.9);
-      g.fillRect(w.x - w.s * 1.1, w.y + w.s * 0.9, 0.8, 0.8);
-    } else if (w.k === 'bruise') {
-      g.fillStyle = 'rgba(96, 40, 118, 0.42)';
-      g.beginPath();
-      g.ellipse(w.x, w.y, 3.6 * w.s, 2.6 * w.s, w.sd, 0, 6.3);
-      g.fill();
-      g.strokeStyle = 'rgba(150, 150, 50, 0.3)';
-      g.lineWidth = 0.6;
-      g.stroke();
-    } else {
-      const a = (w.sd % 1.4) - 0.7, l = 2.2 * w.s;
-      g.strokeStyle = '#4a0510';
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(w.x - Math.cos(a) * l, w.y - Math.sin(a) * l);
-      g.lineTo(w.x + Math.cos(a) * l, w.y + Math.sin(a) * l);
-      g.stroke();
-      g.strokeStyle = '#d4202f';
-      g.lineWidth = 0.6;
-      g.stroke();
-      g.strokeStyle = 'rgba(170, 14, 30, 0.85)'; // a trickle
-      g.lineWidth = 0.8;
-      g.beginPath();
-      g.moveTo(w.x, w.y);
-      g.lineTo(w.x + 0.6, w.y + 2.5 + (w.sd % 1) * 5 * sev);
-      g.stroke();
-    }
-  }
-  // the face
-  if (hp < 0.82) {
-    const len = 3 + sev * 9 + Math.sin(frame * 0.09 + f.side) * 0.8;
-    g.strokeStyle = '#b3101f';
-    g.lineWidth = 1.3;
-    g.beginPath();
-    g.moveTo(mouth[0] + 0.5, mouth[1] - 3);
-    g.lineTo(mouth[0] + 1.2, mouth[1] + len);
-    g.stroke();
-    g.fillStyle = '#b3101f';
-    g.beginPath();
-    g.arc(mouth[0] + 1.2, mouth[1] + len + 0.4, 1, 0, 6.3);
-    g.fill();
-  }
-  if (hp < 0.62) {
-    g.fillStyle = 'rgba(86, 28, 112, 0.5)';
-    g.beginPath();
-    g.ellipse(eye[0] + 2.6, eye[1] + 0.4, 3.6, 2.7, 0, 0, 6.3);
-    g.fill();
-    g.fillStyle = 'rgba(40, 10, 50, 0.45)';
-    g.beginPath();
-    g.ellipse(eye[0] + 2.6, eye[1] + 0.8, 2, 1.4, 0, 0, 6.3);
-    g.fill();
-  }
-  if (hp < 0.5) {
-    g.strokeStyle = '#7a0818';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.moveTo(eye[0] - 1.5, eye[1] - 4.5);
-    g.lineTo(eye[0] + 4.5, eye[1] - 5.6);
-    g.stroke();
-    g.strokeStyle = 'rgba(180, 16, 32, 0.85)';
-    g.lineWidth = 0.9;
-    g.beginPath();
-    g.moveTo(eye[0] + 1.6, eye[1] - 5);
-    g.lineTo(eye[0] + 2.3, eye[1] + 7);
-    g.stroke();
-  }
-  if (hp < 0.3) {
-    const grd = g.createLinearGradient(0, eye[1] - 12, 0, eye[1] + 8);
-    grd.addColorStop(0, 'rgba(150, 10, 26, 0.34)');
-    grd.addColorStop(1, 'rgba(150, 10, 26, 0)');
-    g.fillStyle = grd;
-    g.beginPath();
-    g.ellipse(eye[0] - 1, eye[1] - 2, 8.5, 11, 0, 0, 6.3);
-    g.fill();
+    blob(g, w.x, w.y, w.s, 0.8, w.sd);
+    g.fillStyle = 'rgba(170, 14, 30, 0.8)';
+    g.fillRect(w.x + w.s * 1.3, w.y - w.s * 0.6, 0.9, 0.9);
+    g.fillRect(w.x - w.s * 1.1, w.y + w.s * 0.9, 0.8, 0.8);
   }
   g.restore();
 }

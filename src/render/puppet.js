@@ -172,15 +172,16 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
     const k2 = legPt(knee), f2 = legPt(foot);
     drawPart(ctx.g, puppet, thighName, boneMap(hipJ, kneeJ, h2, k2, sig));
     drawPart(ctx.g, puppet, shinName, boneMap(kneeJ, soleJ, k2, f2, sig));
+    return { h: h2, k: k2, f: f2 };
   };
   const backLeg = newLayer(canvas, res, AX, AY);
-  leg(J.hipB, J.kneeB, J.soleB, pose.bk, pose.bf, 'thighB', 'shinB', backLeg);
+  const legB = leg(J.hipB, J.kneeB, J.soleB, pose.bk, pose.bf, 'thighB', 'shinB', backLeg);
   shade(backLeg, BACK_LEG_SHADE);
   g.save();
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.drawImage(backLeg.c, 0, 0);
   g.restore();
-  leg(J.hipF, J.kneeF, J.soleF, pose.fk, pose.ff, 'thighF', 'shinF', main);
+  const legF = leg(J.hipF, J.kneeF, J.soleF, pose.fk, pose.ff, 'thighF', 'shinF', main);
 
   // ---- torso (and what it wears) ----
   const body = newLayer(canvas, res, AX, AY);
@@ -241,7 +242,7 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
 
   // back arm: a touch darker so the two arms read apart, then the front arm
   const backArm = newLayer(canvas, res, AX, AY);
-  arm(J.shoulderB, J.elbowB, J.handB, SH_B, pose.be, pose.bh, 'armB_up', 'armB_low', backArm,
+  const ba = arm(J.shoulderB, J.elbowB, J.handB, SH_B, pose.be, pose.bh, 'armB_up', 'armB_low', backArm,
     relaxed ? relaxedArm(J.shoulderB, J.elbowB, J.handB, 0.1 + walkSwing, -0.42) : null);
   if (cos.shirt) tintLayer(backArm, cos.shirt, 0.5, true);
   shade(backArm, BACK_ARM_SHADE);
@@ -270,8 +271,14 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
     forearm: norm(sub(fa.h2, fa.e2)),
   };
   const hx = headDest[0], hy = headDest[1];
+  // the joints of this pose (same space as `vis`), so grown-up mode can paint wounds that follow the body (damage.js)
+  const parts = {
+    hip, chest, eye: vis.eye, mouth: vis.mouth,
+    armF: { s: fa.s2, e: fa.e2, h: fa.h2 }, armB: { s: ba.s2, e: ba.e2, h: ba.h2 },
+    legF, legB,
+  };
   return {
-    canvas, ax: AX, ay: AY, w: W, h: H, hi: true, res, vis,
+    canvas, ax: AX, ay: AY, w: W, h: H, hi: true, res, vis, parts,
     head: { x: AX + hx - 14, y: AY + hy - 30, w: 28, h: 32 },
   };
 }
@@ -300,8 +307,7 @@ export function tintHi(src, tint) {
   const g = c.getContext('2d');
   g.drawImage(src, 0, 0);
   g.globalCompositeOperation = 'source-atop';
-  // (grown-up mode: a battered fighter gets a grey, sickly wash; `hurtN` = N quarters of the way to half dead)
-  g.fillStyle = tint === 'white' ? '#ffffff' : tint.startsWith('hurt') ? `rgba(120, 112, 130, ${(Number(tint.slice(4)) * 0.1).toFixed(2)})` : 'rgba(120, 190, 255, 0.62)';
+  g.fillStyle = tint === 'white' ? '#ffffff' : 'rgba(120, 190, 255, 0.62)';
   g.fillRect(0, 0, c.width, c.height);
   return c;
 }
