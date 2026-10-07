@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { handleRoom, memoryStore } from './api/_room-core.js';
+import { iceServers } from './api/_ice.js';
 
 // Dev-only helper: POST a canvas dataURL to /__shot?name=foo and it is saved
 // as tools/shots/foo.png (used for automated visual checks during development).
@@ -35,6 +36,10 @@ const rooms = {
       req.on('end', async () => {
         let parsed = null;
         try { parsed = JSON.parse(body); } catch { /* bad body */ }
+        if (parsed?.a === 'ice') {
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ iceServers: await iceServers(process.env) }));
+        }
         const { status, json } = await handleRoom(store, parsed);
         res.statusCode = status;
         res.setHeader('Content-Type', 'application/json');

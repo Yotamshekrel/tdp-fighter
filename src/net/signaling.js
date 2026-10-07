@@ -10,7 +10,7 @@ async function call(body) {
   try {
     res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
   } catch {
-    throw new Error('CAN\'T REACH THE SERVER');
+    throw new Error(`CAN'T REACH ${new URL(API, location.href).hostname.toUpperCase()}`); // usually a firewall or proxy
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((json.error || 'SERVER ERROR').toUpperCase());
@@ -24,4 +24,15 @@ export const sendSignal = (code, role, msg) => call({ a: 'send', code, role, pay
 export async function pollSignals(code, role, after) {
   const r = await call({ a: 'poll', code, role, after });
   return r.msgs.map((m) => ({ id: m.id, msg: JSON.parse(m.payload) }));
+}
+
+const STUN_ONLY = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+/** STUN + (if the server has one configured) a TURN relay. Never fails: STUN alone is the fallback. */
+export async function getIceServers(code) {
+  try {
+    const r = await Promise.race([call({ a: 'ice', code }), new Promise((_, no) => setTimeout(no, 4000))]);
+    return Array.isArray(r.iceServers) && r.iceServers.length ? r.iceServers : STUN_ONLY;
+  } catch {
+    return STUN_ONLY;
+  }
 }

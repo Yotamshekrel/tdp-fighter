@@ -9,9 +9,8 @@
 // The session outlives the scenes (menu -> character select -> fight -> results) and keeps the
 // opponent's latest pick / start message so a scene that is not open yet loses nothing.
 // ---------------------------------------------------------------------------
-import { createRoom, joinRoom, sendSignal, pollSignals } from './signaling.js';
+import { createRoom, joinRoom, sendSignal, pollSignals, getIceServers } from './signaling.js';
 
-const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
 const CONNECT_TIMEOUT = 30000; // ms from "someone joined" to an open channel
 const WAIT_TIMEOUT = 10 * 60 * 1000; // a host waits this long for a friend
 const SILENCE_LIMIT = 12000; // no message at all from the other side for this long = gone
@@ -24,6 +23,7 @@ export class Session {
     this.status = 'signaling'; // signaling | connecting | open | closed
     this.reason = ''; // why it closed
     this.rtt = NaN;
+    this.route = ''; // 'direct' or 'relay' once connected
     this.remote = { cur: -1, locked: false }; // the opponent's character-select state
     this.start = null; // the host's "start the match" message, until a scene takes it
     this.remoteRematch = false;
@@ -43,6 +43,7 @@ export class Session {
     try {
       s.code = await createRoom();
     } catch (e) { s._close(e.message); return s; }
+    s.icePromise = getIceServers(s.code); // (STUN, plus a TURN relay when the server has one)
     s._poll();
     s._timers.push(setTimeout(() => s.status === 'signaling' && s._close('NOBODY JOINED'), WAIT_TIMEOUT));
     return s;
@@ -54,6 +55,7 @@ export class Session {
     try {
       await joinRoom(s.code);
     } catch (e) { s._close(e.message); return s; }
+    s.icePromise = getIceServers(s.code);
     s.status = 'connecting';
     s._armConnectTimeout();
     s._poll();
@@ -84,8 +86,8 @@ export class Session {
     tick();
   }
 
-  _makePeer() {
-    const pc = new RTCPeerConnection({ iceServers: ICE });
+  async _makePeer() {
+    const pc = new RTCPeerConnection({ iceServers: await this.icePromise });
     this.pc = pc;
     pc.onicecandidate = (e) => e.candidate && sendSignal(this.code, this.role, { t: 'ice', c: e.candidate }).catch(() => {});
     pc.onconnectionstatechange = () => {
@@ -101,13 +103,13 @@ export class Session {
     if (this.role === 'host' && msg.t === 'hello' && !this.pc) {
       this.status = 'connecting';
       this._armConnectTimeout();
-      const pc = this._makePeer();
+      const pc = await this._makePeer();
       this._wire(pc.createDataChannel('ctl', { ordered: true }), 'ctl');
       this._wire(pc.createDataChannel('inp', { ordered: false, maxRetransmits: 0 }), 'inp');
       await pc.setLocalDescription(await pc.createOffer());
       await sendSignal(this.code, 'host', { t: 'offer', sdp: pc.localDescription });
     } else if (this.role === 'guest' && msg.t === 'offer' && !this.pc) {
-      const pc = this._makePeer();
+      const pc = await this._makePeer();
       pc.ondatachannel = (e) => this._wire(e.channel, e.channel.label);
       await pc.setRemoteDescription(msg.sdp);
       await pc.setLocalDescription(await pc.createAnswer());
@@ -147,12 +149,27 @@ export class Session {
     clearTimeout(this._pollTimer);
     this._timers.forEach(clearTimeout);
     this._timers = [];
+    this._findRoute();
     const ping = () => this.sendCtl({ t: 'ping', ts: performance.now() });
     ping();
     this._timers.push(setInterval(() => {
       if (performance.now() - this.lastSeen > SILENCE_LIMIT) return this._close('CONNECTION LOST');
       ping();
     }, 1000));
+  }
+
+  /** Was a direct path found, or are we going through the relay? (shown in the fight corner) */
+  async _findRoute() {
+    try {
+      const stats = await this.pc.getStats();
+      let pair;
+      stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId); });
+      stats.forEach((r) => { if (!pair && r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
+      const local = pair && stats.get(pair.localCandidateId);
+      const remote = pair && stats.get(pair.remoteCandidateId);
+      this.route = local?.candidateType === 'relay' || remote?.candidateType === 'relay' ? 'relay' : 'direct';
+      console.info('[online] connected', this.route);
+    } catch { /* stats are optional */ }
   }
 
   // ---- messages --------------------------------------------------------------------------------

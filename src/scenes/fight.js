@@ -209,7 +209,7 @@ export class FightScene {
     const { W } = VIEW;
     const net = this.game.net;
     const ping = Number.isFinite(net?.rtt) ? `${Math.round(net.rtt)} MS` : '-- MS';
-    drawText(g, `ONLINE  ${ping}`, W - 4, 3, { scale: 1, align: 'right', color: '#ffffff', alpha: 0.55 });
+    drawText(g, `ONLINE  ${ping}${net?.route === 'relay' ? '  RELAY' : ''}`, W - 4, 3, { scale: 1, align: 'right', color: '#ffffff', alpha: 0.55 });
     const say = (text, y, color = '#ffffff') => {
       g.fillStyle = 'rgba(5,6,24,0.7)';
       g.fillRect(0, y - 4, W, 22);

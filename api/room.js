@@ -1,7 +1,8 @@
 // POST /api/room - signaling for online play (see _room-core.js). Rooms live in Neon for ~15 minutes.
 // Only the WebRTC handshake goes through here; the fight itself runs browser to browser.
 import { sql } from './_db.js';
-import { handleRoom } from './_room-core.js';
+import { handleRoom, CODE_RE, ROOM_TTL_MS } from './_room-core.js';
+import { iceServers } from './_ice.js';
 
 let ready;
 function ensureRoomSchema() {
@@ -62,6 +63,14 @@ export default async function handler(req, res) {
 
   try {
     await ensureRoomSchema();
+    if (body?.a === 'ice') {
+      // Only people holding a live room code get relay credentials, so the endpoint cannot be used to burn the quota.
+      const code = typeof body.code === 'string' ? body.code.toUpperCase() : '';
+      const room = CODE_RE.test(code) ? await store.getRoom(code) : null;
+      res.setHeader('Cache-Control', 'no-store');
+      if (!room || Date.now() - room.createdAt > ROOM_TTL_MS) return res.status(404).json({ error: 'room not found' });
+      return res.status(200).json({ iceServers: await iceServers() });
+    }
     const { status, json } = await handleRoom(store, body);
     res.setHeader('Cache-Control', 'no-store');
     return res.status(status).json(json);
