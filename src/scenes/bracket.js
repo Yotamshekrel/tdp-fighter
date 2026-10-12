@@ -15,9 +15,9 @@ import { CHARACTERS } from '../data/characters.js';
 import { ROUND_NAMES, Tournament } from '../game/tournament.js';
 import { pick } from '../game/rng.js';
 import { ARENAS } from '../render/backgrounds.js';
-import { drawText } from '../render/font.js';
+import { drawText, textWidth, fitScale } from '../render/font.js';
 import { drawPortrait } from '../render/sprites.js';
-import { COLORS, GOLD, glass, glow, rrPath, vgrad, vignette, clamp01, easeOut, menuBackdrop } from '../render/ui-kit.js';
+import { COLORS, GOLD, glass, glow, rrPath, vgrad, vignette, clamp01, easeOut, menuBackdrop, makeConfetti, drawConfetti } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
 import { drawMenu, hitTest, hints } from './ui.js';
 import { DIFFS } from './mode-select.js';
@@ -69,10 +69,7 @@ export class BracketScene {
     this.qRound = T.round;
     this.msg = '';
     this.state = 'ready';
-    this.confetti = Array.from({ length: 70 }, () => ({
-      x: Math.random() * VIEW.W, y: -Math.random() * VIEW.H, v: 0.5 + Math.random() * 1.1, p: Math.random() * 6.3,
-      c: ['#ff4d6d', '#ffd23f', '#3ec1ff', '#7dff6a', '#ff8cf0', '#ffffff'][Math.floor(Math.random() * 6)],
-    }));
+    this.confetti = makeConfetti();
     this.game.audio.playMusic('menu');
 
     if (!params.outcome) {
@@ -236,7 +233,7 @@ export class BracketScene {
       hints(g, [['↑↓', 'MOVE'], ['ENTER', 'SELECT'], ['ESC', 'QUIT']], H - 15);
     }
 
-    if (this.state === 'champion') this.drawConfetti(g);
+    if (this.state === 'champion') drawConfetti(g, this.confetti, t);
     vignette(g, 0.4);
     postProcess(g, t, { bloom: 0.2 });
   }
@@ -328,8 +325,9 @@ export class BracketScene {
       g.restore();
     }
     const nameX = x + ph + 6;
-    const sc = big ? 1.5 : 1.15;
-    drawText(g, c.name, nameX, big ? cy - 12 : cy - 4, { scale: sc, color: '#ffffff', shadow: 'rgba(0,0,0,0.8)', weight: 800 });
+    const room = x + w - 4 - nameX - (mine && !big ? textWidth('YOU', 0.95, { weight: 800 }) + 3 : 0); // keep clear of the YOU tag
+    const sc = fitScale(c.name, room, big ? 1.5 : 1.15, 0.85, { weight: 800 });
+    drawText(g, c.name, nameX, (big ? cy - 12 : cy - 4) + ((big ? 1.5 : 1.15) - sc) * 3.5, { scale: sc, color: '#ffffff', shadow: 'rgba(0,0,0,0.8)', weight: 800 });
     if (mine) drawText(g, 'YOU', x + w - 4, big ? cy + 2 : cy - 3, { scale: 0.95, align: 'right', color: COLORS.side[0].b, weight: 800, shadow: 'rgba(0,0,0,0.7)' });
     g.restore();
 
@@ -373,20 +371,5 @@ export class BracketScene {
     rrPath(g, cx - 10, top + 35, 20, 6, 2);
     g.fill();
     g.restore();
-  }
-
-  drawConfetti(g) {
-    const { H } = VIEW;
-    const t = this.t;
-    for (const c of this.confetti) {
-      const y = (c.y + t * c.v * 1.6) % (H + 20);
-      const x = c.x + Math.sin(t * 0.04 + c.p) * 8;
-      g.save();
-      g.translate(x, y);
-      g.rotate(t * 0.08 + c.p);
-      g.fillStyle = c.c;
-      g.fillRect(-1.6, -0.8 * Math.abs(Math.cos(t * 0.1 + c.p)) - 0.3, 3.2, 1.6 * Math.abs(Math.cos(t * 0.1 + c.p)) + 0.6);
-      g.restore();
-    }
   }
 }

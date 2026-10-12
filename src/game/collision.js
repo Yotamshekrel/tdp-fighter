@@ -16,6 +16,3 @@ export function toWorld(f, box, scale = f.scale) {
   const x = f.facing > 0 ? f.x + lx : f.x - lx - w;
   return { x, y: f.y + box.y * scale, w, h };
 }
-
-/** Centre x of a box. */
-export const centerX = (b) => b.x + b.w / 2;

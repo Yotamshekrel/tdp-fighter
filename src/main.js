@@ -88,7 +88,6 @@ const scenes = {
 const unlock = () => audio.unlock();
 window.addEventListener('pointerdown', unlock);
 window.addEventListener('keydown', unlock);
-window.addEventListener('gamepadconnected', () => {});
 
 // Mute button
 const muteBtn = document.getElementById('mute');
@@ -103,7 +102,7 @@ window.addEventListener('keydown', (e) => {
 
 // Auto-pause the fight when the tab loses focus.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && !game.noAutoPause && game.sceneName === 'fight' && game.scene.params?.mode !== 'demo') game.scene.paused = true;
+  if (document.hidden && game.sceneName === 'fight') game.scene.paused = true;
 });
 
 trackVisit();

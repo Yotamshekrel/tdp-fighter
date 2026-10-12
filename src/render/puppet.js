@@ -94,12 +94,34 @@ function newLayer(canvas, res, AX, AY) {
   const c = document.createElement('canvas');
   c.width = canvas.width;
   c.height = canvas.height;
-  const g = c.getContext('2d');
+  return setupLayer({ c, g: c.getContext('2d') }, res, AX, AY);
+}
+
+function setupLayer(layer, res, AX, AY) {
+  const { g } = layer;
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = 'high';
   g.scale(res, res);
   g.translate(AX, AY);
-  return { c, g };
+  return layer;
+}
+
+/**
+ * A blank scratch layer the size of the frame. The back leg, the torso and the arms are each drawn on one, then
+ * copied onto the frame before the next one starts, so one reusable canvas per frame size does for all of them
+ * (instead of four new full-size canvases for every frame built).
+ */
+const scratch = new Map();
+function scratchLayer(canvas, res, AX, AY) {
+  const key = `${canvas.width}x${canvas.height}`;
+  let layer = scratch.get(key);
+  if (!layer) scratch.set(key, (layer = newLayer(canvas, 1, 0, 0)));
+  const { c, g } = layer;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+  g.clearRect(0, 0, c.width, c.height);
+  return setupLayer(layer, res, AX, AY);
 }
 
 function drawPart(g, puppet, name, t, src) {
@@ -174,7 +196,7 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
     drawPart(ctx.g, puppet, shinName, boneMap(kneeJ, soleJ, k2, f2, sig));
     return { h: h2, k: k2, f: f2 };
   };
-  const backLeg = newLayer(canvas, res, AX, AY);
+  const backLeg = scratchLayer(canvas, res, AX, AY);
   const legB = leg(J.hipB, J.kneeB, J.soleB, pose.bk, pose.bf, 'thighB', 'shinB', backLeg);
   shade(backLeg, BACK_LEG_SHADE);
   g.save();
@@ -184,7 +206,7 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
   const legF = leg(J.hipF, J.kneeF, J.soleF, pose.fk, pose.ff, 'thighF', 'shinF', main);
 
   // ---- torso (and what it wears) ----
-  const body = newLayer(canvas, res, AX, AY);
+  const body = scratchLayer(canvas, res, AX, AY);
   drawPart(body.g, puppet, 'torso', T);
   if (cos.stripes) stripeLayer(body, T, J, sig);
   if (cos.poncho) drawPoncho(body.g, T, J);
@@ -241,7 +263,7 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
   };
 
   // back arm: a touch darker so the two arms read apart, then the front arm
-  const backArm = newLayer(canvas, res, AX, AY);
+  const backArm = scratchLayer(canvas, res, AX, AY);
   const ba = arm(J.shoulderB, J.elbowB, J.handB, SH_B, pose.be, pose.bh, 'armB_up', 'armB_low', backArm,
     relaxed ? relaxedArm(J.shoulderB, J.elbowB, J.handB, 0.1 + walkSwing, -0.42) : null);
   if (cos.shirt) tintLayer(backArm, cos.shirt, 0.5, true);
@@ -251,7 +273,7 @@ export function buildPuppetFrame(puppet, pose, frameBox, res = VIEW.SCALE, cos =
   g.drawImage(backArm.c, 0, 0);
   g.restore();
 
-  const frontArm = newLayer(canvas, res, AX, AY);
+  const frontArm = scratchLayer(canvas, res, AX, AY);
   const fa = arm(J.shoulderF, J.elbowF, J.handF, SH_F, pose.fe, pose.fh, 'armF_up', 'armF_low', frontArm,
     relaxed ? relaxedArm(J.shoulderF, J.elbowF, J.handF, -0.08 - walkSwing, -0.5) : null);
   if (cos.shirt) tintLayer(frontArm, cos.shirt, 0.5, true);

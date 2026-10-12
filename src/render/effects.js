@@ -5,9 +5,8 @@
 import { rand, randRange, pick } from '../game/rng.js';
 import { VIEW } from '../config.js';
 import { drawText, textWidth } from './font.js';
-import { rrPath } from './ui-kit.js';
+import { rrPath, CONFETTI } from './ui-kit.js';
 
-const CONFETTI = ['#ff4d6d', '#ffd23f', '#3ec1ff', '#7dff6a', '#ff8cf0', '#ffffff'];
 const INK = '#14101e';
 
 export class Fx {
@@ -85,8 +84,10 @@ export class Fx {
   }
 
   update() {
+    // live particles are packed to the front of the array as we go (no splicing: up to 1300 of them)
     const P = this.parts;
-    for (let i = P.length - 1; i >= 0; i--) {
+    let live = 0;
+    for (let i = 0; i < P.length; i++) {
       const p = P[i];
       p.vy += p.g;
       p.vx *= p.drag;
@@ -98,7 +99,6 @@ export class Fx {
       if (p.land && p.vy > 0 && p.y >= p.floor) {
         if (p.land === 'stain') {
           this.stain(p.x, p.floor, p.size);
-          P.splice(i, 1);
           continue;
         }
         p.y = p.floor;
@@ -107,8 +107,9 @@ export class Fx {
         p.spin *= 0.4;
         if (Math.abs(p.vy) < 0.7) { p.vy = 0; p.vx = 0; p.g = 0; p.spin = 0; p.life = Math.max(p.life, 80); p.land = null; }
       }
-      if (--p.life <= 0) P.splice(i, 1);
+      if (--p.life > 0) P[live++] = p;
     }
+    P.length = live;
     for (const q of this.pools) q.r += (q.rmax - q.r) * 0.025;
     const T = this.texts;
     for (let i = T.length - 1; i >= 0; i--) {

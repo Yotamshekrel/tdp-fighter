@@ -58,28 +58,6 @@ export function line(ctx, x0, y0, x1, y1, color, t = 1) {
   }
 }
 
-/**
- * Draw a little pixel map. rows = array of strings, palette = { char: colour }.
- * '.' or ' ' are transparent. flip mirrors horizontally. Anchor = top-left.
- */
-export function pixmap(ctx, rows, palette, x, y, scale = 1, flip = false) {
-  x = Math.round(x);
-  y = Math.round(y);
-  const w = rows[0].length;
-  for (let r = 0; r < rows.length; r++) {
-    const row = rows[r];
-    for (let c = 0; c < row.length; c++) {
-      const ch = row[c];
-      if (ch === '.' || ch === ' ') continue;
-      const col = palette[ch];
-      if (!col) continue;
-      ctx.fillStyle = col;
-      const cx = flip ? w - 1 - c : c;
-      ctx.fillRect(x + cx * scale, y + r * scale, scale, scale);
-    }
-  }
-}
-
 // ---- colour utilities -------------------------------------------------------
 
 export function hexToRgb(hex) {

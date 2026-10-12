@@ -190,8 +190,26 @@ export function menuBackdrop(g, t, accentA = '#ff3d8b', accentB = '#2fb8ff') {
   vignette(g, 0.55);
 }
 
-/** Thin row of key hints along the bottom: [['↑↓', 'MOVE'], ...] drawn by the caller with drawText. */
-export function hintBar(g, y = H - 22) {
-  g.fillStyle = vgrad(g, y, H, [[0, 'rgba(5,7,20,0)'], [1, 'rgba(5,7,20,0.75)']]);
-  g.fillRect(0, y, W, H - y);
+// ---- confetti (results, tournament champion) ------------------------------------------------
+export const CONFETTI = ['#ff4d6d', '#ffd23f', '#3ec1ff', '#7dff6a', '#ff8cf0', '#ffffff'];
+
+/** n pieces of confetti, starting above the screen. */
+export const makeConfetti = (n = 70) => Array.from({ length: n }, () => ({
+  x: Math.random() * W, y: -Math.random() * H, v: 0.5 + Math.random() * 1.1, p: Math.random() * 6.3,
+  c: CONFETTI[Math.floor(Math.random() * CONFETTI.length)],
+}));
+
+/** Confetti falling, swaying and flipping over at frame t. */
+export function drawConfetti(g, pieces, t) {
+  for (const c of pieces) {
+    const y = (c.y + t * c.v * 1.6) % (H + 20);
+    const x = c.x + Math.sin(t * 0.04 + c.p) * 8;
+    const flip = Math.abs(Math.cos(t * 0.1 + c.p));
+    g.save();
+    g.translate(x, y);
+    g.rotate(t * 0.08 + c.p);
+    g.fillStyle = c.c;
+    g.fillRect(-1.6, -0.8 * flip - 0.3, 3.2, 1.6 * flip + 0.6);
+    g.restore();
+  }
 }

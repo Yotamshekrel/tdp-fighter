@@ -3,14 +3,11 @@
 import { VIEW, KEYS } from '../config.js';
 import { drawText, textWidth } from '../render/font.js';
 import { COLORS, glass, rrPath, vgrad, GOLD } from '../render/ui-kit.js';
-import { dim } from './ui.js';
-
-const LABEL = { ArrowLeft: '◀', ArrowRight: '▶', ArrowUp: '▲', ArrowDown: '▼', Semicolon: ';', Space: 'SPACE', Enter: 'ENTER' };
-const keyName = (codes) => LABEL[codes[0]] || codes[0].replace('Key', '').replace('Digit', '');
+import { dim, keyLabel as keyName } from './ui.js';
 
 /** A little keyboard key with a label. Returns its width. */
 function keycap(g, label, x, y) {
-  const w = Math.max(15, textWidth(label, 1.2) + 9);
+  const w = Math.max(15, textWidth(label, 1.2, { weight: 800, italic: false }) + 9);
   rrPath(g, x, y + 1.8, w, 12.5, 3);
   g.fillStyle = '#8f98c8';
   g.fill();
@@ -29,9 +26,9 @@ function binding(g, labels, caption, x, y, color = '#ffffff') {
   return cx + 3 + textWidth(caption, 1.3);
 }
 
-/** Draw the card. layout = KEYS.solo for 1P, [KEYS.p1, KEYS.p2] for 2P. */
+/** Draw the card: KEYS.solo for 1P, KEYS.p1 and KEYS.p2 side by side for 2P. */
 export function drawControlsCard(g, { mode, chars, t, total }) {
-  const { W, H } = VIEW;
+  const { W } = VIEW;
   dim(g, 0.7);
   glass(g, 28, 30, W - 56, 210, { accent: '#ffd23f' });
   drawText(g, 'GET READY!', W / 2, 38, { scale: 3.8, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
@@ -40,33 +37,34 @@ export function drawControlsCard(g, { mode, chars, t, total }) {
   if (mode === '2p') {
     [KEYS.p1, KEYS.p2].forEach((k, i) => {
       const x = i === 0 ? 50 : 258;
-      drawText(g, `PLAYER ${i + 1}: ${chars[i].name}`, x, 86, { scale: 1.6, color: COLORS.side[i].a, outline: 'rgba(5,6,24,0.8)', italic: true });
-      binding(g, [keyName(k.left), keyName(k.right)], 'MOVE', x, 104);
-      binding(g, [keyName(k.up)], 'JUMP', x, 122);
-      binding(g, [keyName(k.down)], 'CROUCH', x + 86, 122);
-      binding(g, [keyName(k.attack)], 'ATTACK', x, 140, '#ffd23f');
-      binding(g, [keyName(k.defend)], 'DEFEND', x, 158, '#5ad0ff');
-      binding(g, [keyName(k.special)], `SPECIAL: ${chars[i].special.name}`, x, 176, '#ff8cf0');
+      drawText(g, `PLAYER ${i + 1}: ${chars[i].name}`, x, 84, { scale: 1.6, color: COLORS.side[i].a, outline: 'rgba(5,6,24,0.8)', italic: true });
+      binding(g, [keyName(k.left), keyName(k.right)], 'MOVE', x, 100);
+      binding(g, [keyName(k.up)], 'JUMP', x, 116);
+      binding(g, [keyName(k.down)], 'CROUCH', x + 86, 116);
+      binding(g, [keyName(k.attack)], 'ATTACK', x, 132, '#ffd23f');
+      binding(g, [keyName(k.defend)], 'DEFEND', x + 86, 132, '#5ad0ff');
+      binding(g, [keyName(k.special)], `SPECIAL: ${chars[i].special.name}`, x, 148, '#ff8cf0');
     });
   } else {
     const k = KEYS.solo;
     const c = chars[0];
-    binding(g, [keyName(k.left), keyName(k.right)], 'MOVE', 64, 88);
-    binding(g, [keyName(k.up)], 'JUMP', 196, 88);
-    binding(g, [keyName(k.down)], 'CROUCH', 292, 88);
-    binding(g, [keyName(k.attack)], 'ATTACK', 64, 112, '#ffd23f');
-    binding(g, [keyName(k.defend)], 'DEFEND', 196, 112, '#5ad0ff');
-    binding(g, [keyName(k.special)], 'SPECIAL', 292, 112, '#ff8cf0');
+    binding(g, [keyName(k.left), keyName(k.right)], 'MOVE', 64, 86);
+    binding(g, [keyName(k.up)], 'JUMP', 196, 86);
+    binding(g, [keyName(k.down)], 'CROUCH', 292, 86);
+    binding(g, [keyName(k.attack)], 'ATTACK', 64, 106, '#ffd23f');
+    binding(g, [keyName(k.defend)], 'DEFEND', 196, 106, '#5ad0ff');
+    binding(g, [keyName(k.special)], 'SPECIAL', 292, 106, '#ff8cf0');
     const a = keyName(k.attack);
-    drawText(g, `${keyName(k.down)} + ${a} = LOW KICK      ${keyName(k.up)} + ${a} = AIR KICK`, W / 2, 138, { scale: 1.3, align: 'center', color: COLORS.text });
-    drawText(g, `${keyName(k.down)} + ${keyName(k.defend)} = BLOCK LOW`, W / 2, 151, { scale: 1.3, align: 'center', color: COLORS.text });
-    drawText(g, `FULL METER + ${keyName(k.special)} = ${c.special.name}!`, W / 2, 167, { scale: 1.5, align: 'center', color: '#ff8cf0', italic: true });
+    drawText(g, `${keyName(k.down)} + ${a} = LOW KICK      ${keyName(k.up)} + ${a} = AIR KICK`, W / 2, 128, { scale: 1.3, align: 'center', color: COLORS.text });
+    drawText(g, `${keyName(k.down)} + ${keyName(k.defend)} = BLOCK LOW`, W / 2, 140, { scale: 1.3, align: 'center', color: COLORS.text });
+    drawText(g, `FULL METER + ${keyName(k.special)} = ${c.special.name}!`, W / 2, 154, { scale: 1.5, align: 'center', color: '#ff8cf0', italic: true });
   }
   const extra = [];
   if (navigator.getGamepads && Array.from(navigator.getGamepads()).some(Boolean)) extra.push('GAMEPAD: A JUMP  X ATTACK  B DEFEND  Y SPECIAL');
   if (document.body.classList.contains('touch-mode')) extra.push('TOUCH: USE THE ON-SCREEN BUTTONS');
   extra.push('ESC = PAUSE    M = MUTE');
-  extra.forEach((s, i) => drawText(g, s, W / 2, 190 + i * 10 - (extra.length - 1) * 10, { scale: 1.1, align: 'center', color: COLORS.dim }));
+  // bottom-aligned just above the prompt, however many lines there are
+  extra.forEach((s, i) => drawText(g, s, W / 2, 190 - (extra.length - 1 - i) * 9.5, { scale: 1.1, align: 'center', color: COLORS.dim }));
 
   const go = mode === '2p' ? `PRESS ${keyName(KEYS.p1.attack)} OR ${keyName(KEYS.p2.attack)} TO FIGHT!` : `PRESS ${keyName(KEYS.solo.attack)} TO FIGHT!`;
   if (t % 44 < 32) drawText(g, go, W / 2, 205, { scale: 2.3, align: 'center', color: ['#ffffff', '#ffd23f'], outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
@@ -78,5 +76,4 @@ export function drawControlsCard(g, { mode, chars, t, total }) {
   rrPath(g, 40, 230, Math.max(0.1, w), 2.4, 1.2);
   g.fillStyle = '#ffd23f';
   g.fill();
-  void H;
 }

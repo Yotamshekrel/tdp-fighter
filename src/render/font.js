@@ -15,6 +15,7 @@ const ICON_RE = new RegExp(`([${ICONS}])`);
 
 let mctx = null;
 const widthCache = new Map();
+const wrapCache = new Map(); // menus re-wrap the same text every frame
 
 function spacingFor(scale) {
   return scale >= 3 ? 0.03 : 0.07;
@@ -57,7 +58,7 @@ export function textWidth(str, scale = 1, opts = {}) {
     if (!part) continue;
     w += ICONS.includes(part) ? iconWidth(scale) : mctx.measureText(part).width;
   }
-  if (widthCache.size > 600) widthCache.clear();
+  if (widthCache.size > 2000) widthCache.clear();
   widthCache.set(key, w);
   return w;
 }
@@ -131,7 +132,7 @@ export function drawText(ctx, str, x, y, opts = {}) {
         px += iconWidth(scale);
       } else {
         draw(part, null, px);
-        px += ctx.measureText(part).width;
+        px += textWidth(part, scale, opts); // cached, instead of measuring every part on every pass
       }
     }
   };
@@ -141,16 +142,7 @@ export function drawText(ctx, str, x, y, opts = {}) {
     ctx.miterLimit = 2;
     ctx.lineWidth = o * 2 + 0.6;
     ctx.strokeStyle = opts.outline;
-    run((t, ic, px) => {
-      if (t) ctx.strokeText(t, px, base);
-      else {
-        ctx.save();
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.translate(0, 0);
-        icon(ctx, ic, px - o * 0.6, y - o * 0.6, scale * 1.08, opts.outline);
-        ctx.restore();
-      }
-    });
+    run((t, ic, px) => (t ? ctx.strokeText(t, px, base) : icon(ctx, ic, px - o * 0.6, y - o * 0.6, scale * 1.08, opts.outline)));
   }
   if (opts.shadow) {
     const d = Math.max(0.8, scale * 0.5);
@@ -168,21 +160,31 @@ export function drawText(ctx, str, x, y, opts = {}) {
   return w;
 }
 
-/** Word-wrap a string to lines no wider than maxChars characters. */
-export function wrap(str, maxChars) {
-  const words = String(str).split(/\s+/);
+/** Word-wrap a string to lines no wider than `maxW` game pixels at `scale` (measured, so it never overflows). */
+export function wrap(str, maxW, scale = 1, opts = {}) {
+  const key = `${scale}|${maxW}|${opts.italic}|${opts.weight}|${str}`;
+  const hit = wrapCache.get(key);
+  if (hit) return hit;
+  const words = String(str).split(/\s+/).filter(Boolean);
   const lines = [];
   let cur = '';
   for (const w of words) {
-    if (!cur) cur = w;
-    else if ((cur + ' ' + w).length <= maxChars) cur += ' ' + w;
+    const next = cur ? `${cur} ${w}` : w;
+    if (!cur || textWidth(next, scale, opts) <= maxW) cur = next;
     else {
       lines.push(cur);
       cur = w;
     }
   }
   if (cur) lines.push(cur);
+  if (wrapCache.size > 300) wrapCache.clear();
+  wrapCache.set(key, lines);
   return lines;
 }
 
-export const FONT = { CAP, SIZE };
+/** The largest scale (from `scale` down to `min`) at which `str` is at most `maxW` game pixels wide. */
+export function fitScale(str, maxW, scale, min = scale * 0.5, opts = {}) {
+  let s = scale;
+  while (s > min && textWidth(str, s, opts) > maxW) s = Math.max(min, s - 0.05);
+  return s;
+}

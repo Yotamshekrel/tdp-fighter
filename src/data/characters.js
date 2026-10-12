@@ -294,5 +294,3 @@ export const CHARACTERS = [
     quote: 'Per my last email... you lost.',
   },
 ];
-
-export const byId = (id) => CHARACTERS.find((c) => c.id === id);

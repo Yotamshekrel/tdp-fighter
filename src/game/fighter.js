@@ -437,7 +437,7 @@ export class Fighter {
     const t = this.t;
     switch (this.state) {
       case 'idle':
-        return { pose: 'idle', frame: Math.floor(t / 22) % 2 };
+        return { pose: 'idle', frame: 0 }; // the renderer adds a smooth breathing motion on top (battle-render.js)
       case 'walk': {
         const f = Math.floor(t / 7) % 4;
         const back = this.vx * this.facing < 0;

@@ -164,7 +164,6 @@ export const yair = {
   },
   update(w, l, b, t, F) {
     const d = F.d;
-    const fw = w.facing;
     w.fpose = t < 74 ? { pose: 'raise', frame: Math.floor(t / 14) % 2 } : { pose: 'throw', frame: 1 };
     const ac = d.ac;
     if (t < 20) ac.y = lerp(-60, 22, easeOut(t / 20));
@@ -199,7 +198,6 @@ export const yair = {
       l.frozen = 99999;
     }
     if (t > 74 && t < 130 && t % 8 === 0) b.fx.spawn('flake', ac.x + randRange(-24, 24), ac.y + 28, { vx: 0, vy: 1.6, life: 30, color: '#dff6ff' });
-    void fw;
   },
   draw(g, w, l, b, t, F) {
     const ac = F.d.ac;

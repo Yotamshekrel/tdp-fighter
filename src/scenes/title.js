@@ -7,7 +7,7 @@ import { pick, randInt } from '../game/rng.js';
 import { ARENAS } from '../render/backgrounds.js';
 import { drawBattle } from '../render/battle-render.js';
 import { Hud } from '../render/hud.js';
-import { drawText, textWidth } from '../render/font.js';
+import { drawText } from '../render/font.js';
 import { glow, vgrad, vignette } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
 import { hints } from './ui.js';
@@ -28,6 +28,7 @@ export class TitleScene {
     const i = randInt(0, CHARACTERS.length - 1);
     let j = randInt(0, CHARACTERS.length - 2);
     if (j >= i) j++;
+    this.game.bank.keep([CHARACTERS[i].id, CHARACTERS[j].id]);
     this.demo = new Battle({
       chars: [CHARACTERS[i], CHARACTERS[j]],
       controllers: [new CpuBot('hard'), new CpuBot('hard')],
@@ -93,10 +94,9 @@ export class TitleScene {
     g.fillRect(cx - 130, 128, 260, 1.2);
     drawText(g, '23 FRIENDS. 1 CHAMPION.', cx, 133, { scale: 1.5, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.7)', italic: true });
     if (this.t % 56 < 38) drawText(g, 'PRESS START', cx, 154, { scale: 2.4, align: 'center', color: ['#ffffff', '#fff3a0', '#ffd23f'], outline: '#150a04', glow: '#ffb62e' });
-    hints(g, [['ENTER', 'START'], ['CLICK', 'START'], ['M', 'MUTE']], H - 15);
+    hints(g, [['ENTER', 'START'], ['M', 'MUTE']], H - 15);
     const demo = this.demo.fighters.map((f) => f.def.name).join('  VS  ');
     drawText(g, `DEMO: ${demo}`, W - 8, H - 12, { scale: 0.95, align: 'right', color: 'rgba(160,170,220,0.7)' });
-    void textWidth;
     postProcess(g, this.t);
   }
 }

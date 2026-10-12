@@ -5,7 +5,7 @@
 import { VIEW, RULES } from '../config.js';
 import { drawText, textWidth } from './font.js';
 import { drawPortrait, drawFighterArt } from './sprites.js';
-import { COLORS, glass, glow, rrPath, parallelogram, vgrad, clamp01, easeOut, easeOutBack } from './ui-kit.js';
+import { COLORS, GOLD, glow, rrPath, parallelogram, vgrad, clamp01, easeOut, easeOutBack } from './ui-kit.js';
 
 const { W, H } = VIEW;
 const BAR_X = 62, BAR_W = 150, BAR_H = 13, BAR_Y = 11, SKEW = 8;
@@ -35,9 +35,9 @@ export class Hud {
     }
   }
 
-  draw(g, battle, bank, frame) {
-    const [a, b] = battle.fighters;
-    for (const f of [a, b]) {
+  /** Advance the HUD's own animations: once per game update, so they run at the same speed on any display. */
+  update(battle) {
+    for (const f of battle.fighters) {
       const i = f.side;
       // the pale trail drains slowly toward real health
       if (this.trail[i] > f.health) this.trail[i] = Math.max(f.health, this.trail[i] - 0.5);
@@ -45,6 +45,17 @@ export class Hud {
       if (f.health < this.lastHp[i]) this.hit[i] = 12;
       this.lastHp[i] = f.health;
       if (this.hit[i] > 0) this.hit[i]--;
+    }
+    for (const c of this.combo) {
+      if (c.t > 0) c.t--;
+      if (c.pop > 0) c.pop--;
+    }
+  }
+
+  draw(g, battle, bank, frame) {
+    const [a, b] = battle.fighters;
+    for (const f of [a, b]) {
+      const i = f.side;
       this.healthBar(g, f, i, frame);
       this.portrait(g, f, i, bank, frame);
       this.meterBar(g, f, i, frame);
@@ -55,8 +66,6 @@ export class Hud {
     for (let i = 0; i < 2; i++) {
       const c = this.combo[i];
       if (c.t <= 0) continue;
-      c.t--;
-      if (c.pop > 0) c.pop--;
       const x = i === 0 ? 16 : W - 16;
       const pop = 1 + (c.pop || 0) * 0.04;
       const alpha = clamp01(c.t / 14);
@@ -370,7 +379,6 @@ export function drawAnnounce(g, ann, frame) {
 
 /** Special-move cut-in: a dark band with the caster popping out of it, and the move's name. */
 export function drawCutIn(g, f, bank, t, total) {
-  const k = t / total; // 1..0 remaining
   const slide = easeOut(clamp01((total - t) / 8));
   const left = f.side === 0;
   const side = COLORS.side[f.side];
@@ -414,7 +422,5 @@ export function drawCutIn(g, f, bank, t, total) {
   const tx = left ? 150 : W - 150;
   const al = left ? 'left' : 'right';
   drawText(g, `${f.def.name}'S SPECIAL`, tx, y + 8, { scale: 1.3, align: al, color: side.b, shadow: 'rgba(0,0,0,0.7)' });
-  drawText(g, name, tx, y + 21, { scale: 4.2, align: al, color: GOLD_STOPS, outline: '#150a04', glow: side.glow, alpha: slide });
-  void k;
+  drawText(g, name, tx, y + 21, { scale: 4.2, align: al, color: GOLD, outline: '#150a04', glow: side.glow, alpha: slide });
 }
-const GOLD_STOPS = ['#ffffff', '#fff3a0', '#ffd23f', '#ff9b2e'];

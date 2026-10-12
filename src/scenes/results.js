@@ -1,10 +1,10 @@
 // Match results: the winner celebrates, with a win quote. Rematch or leave.
 import { VIEW } from '../config.js';
-import { drawText, wrap } from '../render/font.js';
+import { drawText, wrap, fitScale } from '../render/font.js';
 import { speechBubble } from '../render/effects.js';
 import { drawMenu, hitTest, GOLD } from './ui.js';
 import { drawFrame, drawFighterArt } from '../render/sprites.js';
-import { COLORS, glass, glow, menuBackdrop, vignette, easeOut, clamp01 } from '../render/ui-kit.js';
+import { COLORS, glass, glow, menuBackdrop, vignette, easeOut, clamp01, makeConfetti, drawConfetti } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
 
 const ITEMS = ['REMATCH', 'CHARACTER SELECT', 'MAIN MENU'];
@@ -18,10 +18,7 @@ export class ResultsScene {
     this.t = 0;
     this.sel = 0;
     this.rects = [];
-    this.confetti = Array.from({ length: 70 }, () => ({
-      x: Math.random() * VIEW.W, y: -Math.random() * VIEW.H, v: 0.5 + Math.random() * 1.1, p: Math.random() * 6.3,
-      c: ['#ff4d6d', '#ffd23f', '#3ec1ff', '#7dff6a', '#ff8cf0', '#ffffff'][Math.floor(Math.random() * 6)],
-    }));
+    this.confetti = makeConfetti();
     this.game.audio.playMusic('menu');
     this.game.audio.play('win');
   }
@@ -91,23 +88,17 @@ export class ResultsScene {
       g.scale(-0.8, 0.8);
       drawFrame(g, lf);
       g.restore();
-      // confetti
-      for (const c of this.confetti) {
-        const y = (c.y + t * c.v * 1.6) % (H + 20);
-        const x = c.x + Math.sin(t * 0.04 + c.p) * 8;
-        g.save();
-        g.translate(x, y);
-        g.rotate(t * 0.08 + c.p);
-        g.fillStyle = c.c;
-        g.fillRect(-1.6, -0.8 * Math.abs(Math.cos(t * 0.1 + c.p)) - 0.3, 3.2, 1.6 * Math.abs(Math.cos(t * 0.1 + c.p)) + 0.6);
-        g.restore();
-      }
+      drawConfetti(g, this.confetti, t);
       // text card
       glass(g, 262, 22, 196, 112, { accent: side.a });
-      const who = mode === '1p' ? (winner === 0 ? 'YOU WIN!' : 'YOU LOSE...') : `${w.name} WINS!`;
-      drawText(g, who, 360, 32, { scale: 3.4, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
+      const who = mode === '1p' ? (winner === 0 ? 'YOU WIN!' : 'YOU LOSE...') : `PLAYER ${winner + 1} WINS!`; // the fighter's name is right below
+      const ws = fitScale(who, 180, 3.4, 2.2);
+      drawText(g, who, 360, 32 + (3.4 - ws) * 3.5, { scale: ws, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
       drawText(g, w.name, 360, 66, { scale: 2, align: 'center', color: ['#ffffff', side.b], outline: 'rgba(5,6,24,0.8)' });
-      wrap(`"${w.quote}"`.toUpperCase(), 30).forEach((ln, i) => drawText(g, ln, 360, 88 + i * 12, { scale: 1.3, align: 'center', color: '#ffe9a0', italic: true }));
+      // the win quote, wrapped to the card (and a little smaller if it is a long one)
+      const quote = `"${w.quote}"`;
+      const qs = wrap(quote, 176, 1.3, { italic: true }).length > 3 ? 1.1 : 1.3;
+      wrap(quote, 176, qs, { italic: true }).forEach((ln, i) => drawText(g, ln, 360, 88 + i * qs * 9.2, { scale: qs, align: 'center', color: '#ffe9a0', italic: true }));
       if (t > 20 && t % 120 < 90) speechBubble(g, 'WOOHOO!', 150, 54);
     }
     this.rects = drawMenu(g, ITEMS, this.sel, 360, 150, t, { gap: 26, scale: 1.1, width: 170 });

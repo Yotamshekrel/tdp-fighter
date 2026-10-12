@@ -6,7 +6,7 @@
 //   ARENA     pick a stage (with preview) or RANDOM
 //   LEVEL     CPU difficulty (1P vs CPU and tournament)
 //   GROWNUP   grown-up mode? NO (default) / YES: blood and fatalities    -> character select
-//   SETTINGS  SOUND ON/OFF / HOW TO PLAY
+//   SETTINGS  SOUND ON/OFF / ANNOUNCER ON/OFF / HOW TO PLAY
 //   HELP      controls + rules
 //
 // Back (Esc / X / G) goes up one page; from MAIN it returns to the title.
@@ -14,11 +14,11 @@
 import { VIEW, KEYS } from '../config.js';
 import { CHARACTERS } from '../data/characters.js';
 import { ARENAS, getArena } from '../render/backgrounds.js';
-import { drawText, wrap, textWidth } from '../render/font.js';
+import { drawText, wrap, fitScale } from '../render/font.js';
 import { drawFighterArt, fighterArt } from '../render/sprites.js';
 import { COLORS, glass, glow, rrPath, vgrad, easeOut, clamp01, menuBackdrop } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
-import { drawMenu, hitTest, heading, hints } from './ui.js';
+import { drawMenu, hitTest, heading, hints, keyLabel } from './ui.js';
 
 export const DIFFS = [
   { id: 'easy', label: 'EASY', desc: 'Slow reactions, rarely blocks. Good for learning.', color: '#5dff8a' },
@@ -32,7 +32,6 @@ const SHOW_FRAMES = 260; // how long each fighter of the line-up stays in front
 export class ModeSelectScene {
   constructor(game) {
     this.game = game;
-    this.previews = new Map();
   }
 
   /** params.page lets other scenes return to a specific page (e.g. "back" from character select). */
@@ -159,21 +158,6 @@ export class ModeSelectScene {
     this.game.go('select', { mode: this.mode, arena: s.stage, difficulty: s.difficulty });
   }
 
-  /** Rendered thumbnail of an arena (hi-res, cached). */
-  preview(id) {
-    let c = this.previews.get(id);
-    if (c) return c;
-    const S = VIEW.SCALE;
-    c = document.createElement('canvas');
-    c.width = VIEW.W * S;
-    c.height = VIEW.H * S;
-    const g = c.getContext('2d');
-    g.scale(S, S);
-    getArena(id).draw(g, 140, 0);
-    this.previews.set(id, c);
-    return c;
-  }
-
   draw(g) {
     const { W, H } = VIEW;
     menuBackdrop(g, this.t, this.page === 'arena' ? '#ff9a3d' : this.page === 'grownup' ? '#d01428' : '#ff3d8b', this.page === 'grownup' ? '#3a1070' : '#2fb8ff');
@@ -195,7 +179,7 @@ export class ModeSelectScene {
       const big = this.page === 'main' || this.page === 'play';
       const gap = big ? 33 : 26;
       this.rects = drawMenu(g, items, this.sel, 128, 96, this.t, { gap, scale: big ? 1.55 : 1.25, width: 176 });
-      if (this.page === 'level') this.drawLevelCard(g, 96 + items.length * gap + 4);
+      if (this.page === 'level') this.drawLevelCard(g);
       else if (this.page === 'grownup') this.drawGrownCard(g);
       else this.drawShowcase(g);
     }
@@ -212,9 +196,9 @@ export class ModeSelectScene {
     const k = (this.t % SHOW_FRAMES) / SHOW_FRAMES;
     const enter = easeOut(clamp01(k * 6));
     const slots = [
-      { id: this.lineup[(idx + 1) % n], x: 262, h: 150, a: 0.55 },
-      { id: this.lineup[(idx + 2) % n], x: 436, h: 150, a: 0.55 },
-      { id: this.lineup[idx % n], x: 350, h: 208, a: 1 },
+      { id: this.lineup[(idx + 1) % n], x: 266, h: 138, a: 0.55 },
+      { id: this.lineup[(idx + 2) % n], x: 434, h: 138, a: 0.55 },
+      { id: this.lineup[idx % n], x: 350, h: 184, a: 1 },
     ];
     glow(g, 350, 150, 150, '#5a6cff', 0.4);
     // floor
@@ -239,15 +223,16 @@ export class ModeSelectScene {
       drawFighterArt(g, bank, s.id, s.x + sway + (front ? (1 - enter) * 40 : 0), 240 + bob, s.h, false);
       g.restore();
     }
-    // name plate for the front fighter
+    // name plate for the front fighter, above their head
     const def = CHARACTERS.find((c) => c.id === slots[2].id);
     if (def) {
-      drawText(g, def.name, 456, 36, { scale: 4, align: 'right', color: ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.85)', alpha: enter, glow: 'rgba(110,140,255,0.7)' });
-      drawText(g, def.special.name, 456, 70, { scale: 1.5, align: 'right', color: '#ffd23f', shadow: 'rgba(0,0,0,0.7)', alpha: enter });
+      const ns = fitScale(def.name, 200, 3.4, 2.4);
+      drawText(g, def.name, 456, 12 + (3.4 - ns) * 7, { scale: ns, align: 'right', color: ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.85)', alpha: enter, glow: 'rgba(110,140,255,0.7)' });
+      drawText(g, def.special.name, 456, 40, { scale: 1.4, align: 'right', color: '#ffd23f', shadow: 'rgba(0,0,0,0.7)', alpha: enter });
     }
   }
 
-  drawLevelCard(g, y) {
+  drawLevelCard(g) {
     const d = DIFFS[this.sel];
     glass(g, 250, 92, 196, 112, { accent: d.color });
     drawText(g, d.label, 266, 104, { scale: 3.4, color: [d.color, '#ffffff'], outline: 'rgba(5,6,24,0.85)', glow: d.color });
@@ -257,8 +242,7 @@ export class ModeSelectScene {
       g.fillStyle = i <= this.sel ? d.color : 'rgba(255,255,255,0.12)';
       g.fill();
     }
-    wrap(d.desc.toUpperCase(), 30).forEach((ln, i) => drawText(g, ln, 266, 158 + i * 13, { scale: 1.25, color: COLORS.text }));
-    void y;
+    wrap(d.desc.toUpperCase(), 164, 1.25).forEach((ln, i) => drawText(g, ln, 266, 158 + i * 13, { scale: 1.25, color: COLORS.text }));
   }
 
   /** The grown-up mode question: what YES turns on, with blood running down the card. */
@@ -276,8 +260,8 @@ export class ModeSelectScene {
     }
     drawText(g, yes ? 'BRUTAL' : 'CLEAN', x + 14, y + 10, { scale: 3.4, color: yes ? ['#ffffff', '#ff7a6a', '#d4142a'] : ['#ffffff', '#a8ffc4', '#3ed67a'], outline: 'rgba(5,6,24,0.85)', glow: accent });
     const lines = yes
-      ? ['MORE BLOOD IN EVERY HIT', 'FIGHTERS BLEED AND LOOK BATTERED', 'AS THEIR HEALTH RUNS OUT', 'A FATALITY ENDS EVERY MATCH,', 'DIFFERENT FOR EACH FIGHTER']
-      : ['THE NORMAL GAME', 'NO BLOOD, NO FATALITIES', '', 'PICK YES FOR THE', 'GROWN-UP VERSION'];
+      ? ['BLOOD WITH EVERY HIT', 'FIGHTERS BLEED AND LOOK BATTERED', 'AS THEIR HEALTH RUNS OUT', 'EVERY MATCH ENDS IN A FATALITY,', 'A DIFFERENT ONE FOR EACH FIGHTER']
+      : ['THE CLASSIC GAME', 'NO BLOOD, NO FATALITIES', '', 'PICK YES FOR THE', 'GROWN-UP VERSION'];
     lines.forEach((ln, i) => drawText(g, ln, x + 14, y + 48 + i * 13, { scale: 1.25, color: yes && i < 3 ? '#ffd0d0' : COLORS.text }));
     drawText(g, yes ? 'NOT FOR KIDS!' : 'DEFAULT', x + 14, y + h - 17, { scale: 1.5, color: accent, outline: 'rgba(5,6,24,0.8)' });
     if (yes) {
@@ -317,7 +301,7 @@ export class ModeSelectScene {
     rrPath(g, px, py, pw, ph, 7);
     g.clip();
     g.imageSmoothingEnabled = true;
-    g.drawImage(this.preview(id), px, py, pw, ph);
+    g.drawImage(getArena(id).img, px, py, pw, ph);
     g.fillStyle = vgrad(g, py + ph * 0.55, py + ph, [[0, 'rgba(4,5,22,0)'], [1, 'rgba(4,5,22,0.78)']]);
     g.fillRect(px, py, pw, ph);
     if (this.sel === 0) {
@@ -338,28 +322,32 @@ export class ModeSelectScene {
     const { W, H } = VIEW;
     heading(g, 'HOW TO PLAY', 34, 40, { scale: 3.2 });
     glass(g, 30, 72, W - 60, 172);
-    const k = (codes) => codes.map((c) => c.replace('Key', '').replace('Arrow', '').replace('Semicolon', ';')).join('/');
+    const k = (codes) => keyLabel(codes);
+    const keys = (...lists) => lists.map(k).join(' ');
+    const { solo, p1, p2 } = KEYS;
     const rows = [
       ['', '1P VS CPU', '2P: PLAYER 1', '2P: PLAYER 2'],
-      ['MOVE', 'LEFT RIGHT', `${k(KEYS.p1.left)} ${k(KEYS.p1.right)}`, 'LEFT RIGHT'],
-      ['JUMP', 'UP', k(KEYS.p1.up), 'UP'],
-      ['CROUCH', 'DOWN', k(KEYS.p1.down), 'DOWN'],
-      ['ATTACK', k(KEYS.solo.attack), k(KEYS.p1.attack), k(KEYS.p2.attack)],
-      ['DEFEND', k(KEYS.solo.defend), k(KEYS.p1.defend), k(KEYS.p2.defend)],
-      ['SPECIAL', k(KEYS.solo.special), k(KEYS.p1.special), k(KEYS.p2.special)],
+      ['MOVE', keys(solo.left, solo.right), keys(p1.left, p1.right), keys(p2.left, p2.right)],
+      ['JUMP', k(solo.up), k(p1.up), k(p2.up)],
+      ['CROUCH', k(solo.down), k(p1.down), k(p2.down)],
+      ['ATTACK', k(solo.attack), k(p1.attack), k(p2.attack)],
+      ['DEFEND', k(solo.defend), k(p1.defend), k(p2.defend)],
+      ['SPECIAL', k(solo.special), k(p1.special), k(p2.special)],
     ];
     rows.forEach((r, i) => {
-      const y = 80 + i * 12;
+      const y = 80 + i * 11.5;
       const hdr = i === 0;
       if (i % 2 === 1) {
         g.fillStyle = 'rgba(255,255,255,0.04)';
-        g.fillRect(36, y - 2, W - 72, 12);
+        g.fillRect(36, y - 2, W - 72, 11.5);
       }
       drawText(g, r[0], 44, y, { scale: 1.2, color: COLORS.dim });
       for (let c = 1; c < 4; c++) drawText(g, r[c], [0, 190, 290, 390][c], y, { scale: 1.2, color: hdr ? '#ffd23f' : '#ffffff', align: 'center' });
     });
+    g.fillStyle = 'rgba(255,255,255,0.12)';
+    g.fillRect(44, 161, W - 88, 0.6);
     const tips = [
-      'GAMEPAD: X ATTACK, B DEFEND, Y/RB SPECIAL, A JUMP',
+      'GAMEPAD: A JUMP, X ATTACK, B DEFEND, Y SPECIAL, START PAUSE',
       'CROUCH + ATTACK = LOW KICK (BLOCK IT CROUCHING)',
       'JUMP + ATTACK = AIR KICK (BLOCK IT STANDING)',
       'DEFEND BLOCKS MOST DAMAGE, BUT YOU CAN\'T MOVE',
@@ -367,8 +355,7 @@ export class ModeSelectScene {
       'TOURNAMENT: 8 FIGHTERS, QUARTER-FINALS TO THE FINAL',
       'BEST OF 3 ROUNDS.  ESC = PAUSE.  M = MUTE',
     ];
-    tips.forEach((tp, i) => drawText(g, tp, W / 2, 168 + i * 12, { scale: 1.15, align: 'center', color: i < 1 ? '#5ad0ff' : COLORS.text }));
-    drawText(g, 'PRESS ANY BUTTON', W / 2, H - 22, { scale: 1.3, align: 'center', color: this.t % 40 < 24 ? '#ffd23f' : COLORS.dim });
-    void textWidth;
+    tips.forEach((tp, i) => drawText(g, tp, W / 2, 166 + i * 10.5, { scale: 1.1, align: 'center', color: i < 1 ? '#5ad0ff' : COLORS.text }));
+    hints(g, [['ESC', 'BACK']], H - 15);
   }
 }

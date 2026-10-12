@@ -1,7 +1,7 @@
 // "VS" intro screen between character select and the fight.
 import { VIEW } from '../config.js';
 import { getArena } from '../render/backgrounds.js';
-import { drawText } from '../render/font.js';
+import { drawText, fitScale } from '../render/font.js';
 import { drawFighterArt } from '../render/sprites.js';
 import { COLORS, GOLD, glow, parallelogram, vgrad, vignette, easeOut, clamp01, easeOutBack } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
@@ -15,10 +15,12 @@ export class VsScene {
     this.t = 0;
     this.game.audio.stopMusic();
     this.game.audio.play('vs');
-    getArena(params.arena); // pre-build the stage while we wait
+    this.ids = params.chars.map((c) => c.id);
+    this.game.bank.keep(this.ids); // free the frames of fighters who are not in this match
   }
   update() {
     this.t++;
+    this.game.bank.prewarm(this.ids); // build the fight's frames while the VS screen plays
     const m = this.game.input.menu;
     if (this.t > 170 || (this.t > 30 && (m.confirm || m.click))) this.game.go('fight', this.params);
   }
@@ -96,13 +98,15 @@ export class VsScene {
       // name plates
       const nx = i === 0 ? 14 : W - 14;
       const al = i === 0 ? 'left' : 'right';
-      const ny = i === 0 ? 12 : 214;
+      // long names shrink so P2's plate stays clear of the stage banner
+      const ns = fitScale(c.name, 200, 5.2, 3.4);
+      const ny = (i === 0 ? 12 : 190) + (5.2 - ns) * 7;
       const slideN = easeOut(clamp01((t - 8) / 14));
       g.save();
       g.globalAlpha = slideN;
       g.translate((i === 0 ? -1 : 1) * (1 - slideN) * 80, 0);
-      drawText(g, c.name, nx, ny, { scale: 5.2, align: al, color: GOLD, outline: 'rgba(5,6,24,0.92)', glow: side.glow });
-      drawText(g, c.special.name, nx + (i === 0 ? 3 : -3), ny + 41, { scale: 1.7, align: al, color: ['#ffffff', side.b], outline: 'rgba(5,6,24,0.9)' });
+      drawText(g, c.name, nx, ny, { scale: ns, align: al, color: GOLD, outline: 'rgba(5,6,24,0.92)', glow: side.glow });
+      drawText(g, c.special.name, nx + (i === 0 ? 3 : -3), (i === 0 ? 12 : 190) + 41, { scale: 1.7, align: al, color: ['#ffffff', side.b], outline: 'rgba(5,6,24,0.9)' });
       g.restore();
     }
 
@@ -123,13 +127,13 @@ export class VsScene {
     const sk = easeOut(clamp01((t - 22) / 14));
     g.save();
     g.globalAlpha = sk;
-    parallelogram(g, W / 2 - 100, H - 34, 200, 18, 10);
+    parallelogram(g, W / 2 - 100, H - 26, 200, 18, 10);
     g.fillStyle = 'rgba(5,6,24,0.8)';
     g.fill();
     g.lineWidth = 0.7;
     g.strokeStyle = 'rgba(255,255,255,0.5)';
     g.stroke();
-    drawText(g, `STAGE:  ${getArena(arena).name.toUpperCase()}`, W / 2, H - 31, { scale: 1.45, align: 'center', color: '#ffffff', italic: true });
+    drawText(g, `STAGE:  ${getArena(arena).name}`, W / 2, H - 23, { scale: 1.45, align: 'center', color: '#ffffff', italic: true });
     g.restore();
     vignette(g, 0.5);
     if (t < 6) {

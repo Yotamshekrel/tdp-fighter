@@ -1,16 +1,15 @@
 // Shared menu/panel drawing helpers for scenes.
 import { VIEW } from '../config.js';
 import { drawText, textWidth } from '../render/font.js';
-import { COLORS, GOLD, glass, glow, rrPath, vgrad, menuBackdrop, dim as dimScreen, vignette } from '../render/ui-kit.js';
+import { COLORS, GOLD, rrPath, vgrad, dim as dimScreen } from '../render/ui-kit.js';
 
 export { GOLD, dimScreen as dim };
 
 const { W } = VIEW;
 
-/** A frosted-glass panel (x, y, w, h in game px). */
-export function panel(g, x, y, w, h, fill) {
-  glass(g, x, y, w, h, { fill: fill && !fill.startsWith('#') ? fill : undefined, accent: 'rgba(255,255,255,0.22)' });
-}
+const KEY_LABELS = { ArrowLeft: '◀', ArrowRight: '▶', ArrowUp: '▲', ArrowDown: '▼', Semicolon: ';', Space: 'SPACE', Enter: 'ENTER', Escape: 'ESC' };
+/** What to print on a key cap for a list of KeyboardEvent codes (the first one): 'KeyZ' -> 'Z', 'ArrowLeft' -> '◀'. */
+export const keyLabel = (codes) => KEY_LABELS[codes[0]] || codes[0].replace('Key', '').replace('Digit', '');
 
 /**
  * Vertical menu centred on cx. Returns hit rects (for mouse/touch).
@@ -66,11 +65,6 @@ export function hitTest(pointer, rects) {
   return rects.findIndex((r) => pointer.x >= r.x && pointer.x < r.x + r.w && pointer.y >= r.y && pointer.y < r.y + r.h);
 }
 
-/** Animated menu backdrop (kept under its old name so scenes read the same). */
-export function checker(g, frame, a, b) {
-  menuBackdrop(g, frame, a, b);
-}
-
 /** A section title with an accent underline. */
 export function heading(g, text, x, y, o = {}) {
   const sc = o.scale ?? 3;
@@ -91,7 +85,7 @@ export function hints(g, parts, y = VIEW.H - 14) {
   const gap = 14;
   let total = 0;
   const sizes = parts.map(([k, c]) => {
-    const kw = Math.max(13, textWidth(k, sc) + 8);
+    const kw = Math.max(13, textWidth(k, sc, { weight: 800, italic: false }) + 8);
     const cw = textWidth(c, sc);
     total += kw + 4 + cw;
     return [kw, cw];
@@ -108,5 +102,3 @@ export function hints(g, parts, y = VIEW.H - 14) {
     x += kw + 4 + cw + gap;
   });
 }
-
-export { glow, vignette };

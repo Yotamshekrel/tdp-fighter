@@ -144,6 +144,12 @@ function segment(img, box, R) {
     [ARM_F]: [[J.shoulderF, J.elbowF], [J.elbowF, J.handF]],
     [ARM_B]: [[J.shoulderB, J.elbowB], [J.elbowB, J.handB]],
   };
+  // the fingers reach past the hand joint: the corridor (not the seeds) runs on along the forearm for them
+  const fingers = (e, h) => { const d = norm(sub(h, e)); return [h, [h[0] + d[0] * 40 * u, h[1] + d[1] * 40 * u]]; };
+  const reach = {
+    [ARM_F]: [...armBones[ARM_F], fingers(J.elbowF, J.handF)],
+    [ARM_B]: [...armBones[ARM_B], fingers(J.elbowB, J.handB)],
+  };
   const corridor = { [ARM_F]: new Uint8Array(W * H), [ARM_B]: new Uint8Array(W * H) };
   const legBones = {
     [LEG_F]: [[J.hipF, J.kneeF], [J.kneeF, J.soleF]],
@@ -164,7 +170,7 @@ function segment(img, box, R) {
       if (y < headCut) { lab[p] = HEAD; continue; }
       for (const L of [ARM_F, ARM_B]) {
         let d = 1e9;
-        for (const [a, b] of armBones[L]) d = Math.min(d, distToSeg(x, y, a, b));
+        for (const [a, b] of reach[L]) d = Math.min(d, distToSeg(x, y, a, b));
         if (d <= 58 * u) corridor[L][p] = 1;
       }
     }
@@ -221,13 +227,34 @@ function segment(img, box, R) {
     }
   }
 
-  // anything the flood never reached (islands) goes by simple rules
-  const dflt = (x, y) => (y < hipCut ? TORSO : x < J.pelvis[0] ? LEG_B : LEG_F);
+  // anything the flood never reached (islands) goes by simple rules: bits around a hand belong to that hand
+  const nearHand = (x, y) => {
+    for (const L of [ARM_F, ARM_B]) for (const [a, b] of reach[L].slice(1)) if (distToSeg(x, y, a, b) <= 58 * u) return L;
+    return 0;
+  };
+  const dflt = (x, y) => nearHand(x, y) || (y < hipCut ? TORSO : x < J.pelvis[0] ? LEG_B : LEG_F);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const p = y * W + x;
     if (alpha[p] && !lab[p]) lab[p] = dflt(x, y);
   }
-  // each limb is one connected blob; stray bits go back to the body
+  // each limb is one connected blob; a stray bit joins the part it touches most (the edge of a hand goes to the
+  // hand, not to the leg it happened to be flooded from), so nothing is left floating beside the hips.
+  // Connected the way the flood spreads (8 neighbours).
+  const neighbourPart = (comp, L) => {
+    const votes = {};
+    for (const q of comp) {
+      const qx = q % W, qy = (q / W) | 0;
+      for (const [dx, dy] of NB) {
+        const nx = qx + dx, ny = qy + dy;
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+        const k = lab[ny * W + nx];
+        if (k && k !== L && k !== HEAD) votes[k] = (votes[k] || 0) + 1;
+      }
+    }
+    let best = 0, n = 0;
+    for (const k in votes) if (votes[k] > n) { n = votes[k]; best = Number(k); }
+    return best;
+  };
   for (const L of [ARM_F, ARM_B, LEG_F, LEG_B]) {
     const seen = new Uint8Array(W * H);
     let best = [];
@@ -241,15 +268,22 @@ function segment(img, box, R) {
       while (st.length) {
         const q = st.pop();
         comp.push(q);
-        const qx = q % W;
-        for (const n of [qx > 0 ? q - 1 : -1, qx < W - 1 ? q + 1 : -1, q >= W ? q - W : -1, q < W * (H - 1) ? q + W : -1]) {
-          if (n >= 0 && lab[n] === L && !seen[n]) { seen[n] = 1; st.push(n); }
+        const qx = q % W, qy = (q / W) | 0;
+        for (const [dx, dy] of NB) {
+          const nx = qx + dx, ny = qy + dy;
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const n = ny * W + nx;
+          if (lab[n] === L && !seen[n]) { seen[n] = 1; st.push(n); }
         }
       }
       comps.push(comp);
       if (comp.length > best.length) best = comp;
     }
-    for (const comp of comps) if (comp !== best) for (const q of comp) lab[q] = dflt(q % W, (q / W) | 0);
+    for (const comp of comps) {
+      if (comp === best) continue;
+      const to = neighbourPart(comp, L);
+      for (const q of comp) lab[q] = to || dflt(q % W, (q / W) | 0);
+    }
   }
   return lab;
 }

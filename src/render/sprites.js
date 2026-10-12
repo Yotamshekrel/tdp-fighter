@@ -24,6 +24,14 @@ import { damagedFrame } from './damage.js';
 
 export const FRAME = { W: 112, H: 136, AX: 56, AY: 122 };
 
+/** The frames every fight needs (pose, frame, tint), built ahead by SpriteBank.prewarm. */
+const WARM = [
+  ...[['idle', 1], ['walk', 4], ['jumpUp', 1], ['jumpDown', 1], ['crouch', 1], ['punch', 3], ['lowKick', 3], ['airKick', 2],
+    ['block', 1], ['crouchBlock', 1], ['hit', 2], ['crouchHit', 1], ['fall', 1], ['lying', 1], ['win', 2]]
+    .flatMap(([p, n]) => Array.from({ length: n }, (_, k) => [p, k, null])),
+  ['hit', 0, 'white'], ['hit', 1, 'white'], ['crouchHit', 0, 'white'], ['fall', 0, 'white'],
+];
+
 /** Draw a sprite frame anchored at the current origin (works for pixel and hi-res frames). */
 export function drawFrame(g, fr) {
   const smooth = g.imageSmoothingEnabled;
@@ -79,22 +87,6 @@ export function drawFighterArt(g, bank, id, cx, footY, h, flip = false, tint = n
   g.restore();
 }
 
-/** Size of a portrait on the game grid (hi-res portraits carry lw/lh). */
-export const portraitSize = (p) => [p.lw ?? p.width, p.lh ?? p.height];
-
-/** 28x32 pixel head built from a portrait picture: only used for skin tone and as a fallback. */
-function puppetHead(img, skin = '#deaa87') {
-  const c = document.createElement('canvas');
-  c.width = HEAD.W;
-  c.height = HEAD.H;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(img, 0, 0, HEAD.W, HEAD.H);
-  const d = g.getImageData(0, 0, HEAD.W, HEAD.H).data;
-  const data = new Uint32Array(d.buffer.slice(0));
-  const h = (v) => Math.round(v).toString(16).padStart(2, '0');
-  return { w: HEAD.W, h: HEAD.H, data, skin, palette: [] };
-}
 const OUTLINE = pack(20, 16, 30);
 const WHITE = pack(255, 255, 255);
 const LIGHT = [0.6, -0.8]; // light comes from upper-front
@@ -201,54 +193,67 @@ export class SpriteBank {
   }
 
   /**
-   * Build every character's pixel head. Characters with a `look` get a
-   * hand-built pixel portrait (skin tone sampled from their photo); others
-   * fall back to the pixelated-photo pipeline, or a silhouette if no photo.
+   * Load every character's art, all at once (the downloads run in parallel; onProgress fires as each one lands).
+   * Fighters with hi-res art (public/fighters/<id>/, see puppet.js) are posed from cut-out parts; anyone without
+   * it gets a pixel head from their `look` (or a pixelated photo / a silhouette) on a procedural body.
    */
   async load(defs, onProgress = () => {}) {
-    let i = 0;
+    let done = 0;
     const base = import.meta.env?.BASE_URL ?? '/';
-    for (const def of defs) {
-      let head;
-      // fighters with hi-res art (public/fighters/<id>/, see puppet.js) are posed from cut-out parts
+    await Promise.all(defs.map(async (def) => {
       const puppet = await loadPuppet(`${base}fighters/${def.id}/`);
-      if (puppet?.portrait) {
-        this.add(def, puppetHead(puppet.portrait, def.look?.skin), false, puppet);
-        onProgress(++i / defs.length, def);
-        continue;
-      }
-      // only fighters without a face description fall back to a photo (none of the roster does)
-      const img = def.look?.skin ? null : await loadImage(`${base}photos/${def.id}.jpg`);
-      try {
-        if (def.look) head = buildFace(def.look, def.look.skin || sampleSkin(img, def.face));
-        else head = img ? buildHead(img, def.face) : silhouetteHead();
-      } catch (err) {
-        console.warn(`Head build failed for ${def.id}`, err);
-        head = silhouetteHead();
-      }
-      this.add(def, head, !img && !def.look);
-      onProgress(++i / defs.length, def);
-    }
+      if (puppet?.portrait) this.addPuppet(def, puppet);
+      else await this.addPixel(def, base);
+      onProgress(++done / defs.length, def);
+    }));
   }
 
-  add(def, head, missing = false, puppet = null) {
-    def.skinColor = head.skin;
-    let portrait = headToCanvas(head);
-    if (puppet?.portrait) {
-      // hi-res portrait; lw/lh = its size on the game grid
-      portrait = document.createElement('canvas');
-      portrait.width = puppet.portrait.width;
-      portrait.height = puppet.portrait.height;
-      portrait.getContext('2d').drawImage(puppet.portrait, 0, 0);
-      portrait.lw = head.w;
-      portrait.lh = head.h;
+  addPuppet(def, puppet) {
+    def.skinColor = def.look?.skin || '#deaa87';
+    // hi-res portrait; lw/lh = its size on the game grid
+    const portrait = puppet.portrait;
+    portrait.lw = HEAD.W;
+    portrait.lh = HEAD.H;
+    this.chars.set(def.id, { def, puppet, portrait, frames: new Map() });
+  }
+
+  async addPixel(def, base) {
+    // only fighters without a face description fall back to a photo (none of the roster does)
+    const img = def.look?.skin ? null : await loadImage(`${base}photos/${def.id}.jpg`);
+    let head;
+    try {
+      if (def.look) head = buildFace(def.look, def.look.skin || sampleSkin(img, def.face));
+      else head = img ? buildHead(img, def.face) : silhouetteHead();
+    } catch (err) {
+      console.warn(`Head build failed for ${def.id}`, err);
+      head = silhouetteHead();
     }
-    this.chars.set(def.id, {
-      def, head, missing, puppet,
-      headOld: agedHead(head),
-      portrait,
-      frames: new Map(),
-    });
+    def.skinColor = head.skin;
+    this.chars.set(def.id, { def, head, puppet: null, headOld: agedHead(head), portrait: headToCanvas(head), frames: new Map() });
+  }
+
+  /**
+   * Drop the cached animation frames of everyone not in `ids`. Every frame is a hi-res canvas (about 1 MB),
+   * so without this a long session (the title demo alone cycles through the whole roster) keeps growing.
+   */
+  keep(ids) {
+    for (const [id, ch] of this.chars) if (!ids.includes(id)) ch.frames.clear();
+  }
+
+  /**
+   * Build ahead of time the frames a fight shows first (every basic move, and the white hit flash), a few per
+   * call, so the first punch or jump of a fight never stalls a frame while its picture is made.
+   * Returns true once everything is ready.
+   */
+  prewarm(ids, budget = 6) {
+    this.warm ||= { key: '', queue: [] };
+    const key = ids.join('|');
+    if (this.warm.key !== key) this.warm = { key, queue: ids.flatMap((id) => (this.chars.has(id) ? WARM.map(([p, k, tint]) => [id, p, k, tint]) : [])) };
+    for (let n = 0; n < budget && this.warm.queue.length; n++) {
+      const [id, p, k, tint] = this.warm.queue.shift();
+      this.frame(id, p, k, null, tint);
+    }
+    return this.warm.queue.length === 0;
   }
 
   portrait(id) {
@@ -808,5 +813,3 @@ function drawProp(buf, prop, fe, fh) {
       break;
   }
 }
-
-export { HEAD };

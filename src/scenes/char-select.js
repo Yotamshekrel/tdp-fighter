@@ -1,15 +1,15 @@
 // Character select: a grid of every fighter in the middle, both players' picks
 // shown full-body at the sides, and their special moves underneath.
-import { VIEW } from '../config.js';
+import { VIEW, KEYS } from '../config.js';
 import { CHARACTERS } from '../data/characters.js';
 import { randInt, pick } from '../game/rng.js';
 import { Tournament } from '../game/tournament.js';
 import { ARENAS } from '../render/backgrounds.js';
-import { drawText, wrap, textWidth } from '../render/font.js';
+import { drawText, wrap, textWidth, fitScale } from '../render/font.js';
 import { drawFighterArt, drawPortrait } from '../render/sprites.js';
 import { COLORS, glass, glow, rrPath, vgrad, menuBackdrop } from '../render/ui-kit.js';
 import { postProcess } from '../render/post.js';
-import { hints } from './ui.js';
+import { hints, keyLabel } from './ui.js';
 
 // Two groups: the TDPST, then the mentors and the rest (drawn as a centred row under a divider).
 const MENTORS = ['nethanel', 'rashida', 'noa-ple', 'danny', 'tal'];
@@ -71,7 +71,7 @@ export class CharSelectScene {
     this.t = 0;
     this.cur = [...this.last];
     this.locked = [false, false];
-    this.stage = mode === '2p' ? 'both' : 'p1'; // 'p1' -> 'cpu' for 1P / demo (a tournament only picks P1)
+    this.stage = mode === '2p' ? 'both' : 'p1'; // 'p1' -> 'cpu' for 1P (a tournament only picks P1)
     this.doneT = 0;
     this.lockT = [0, 0];
     this.moveT = [0, 0]; // when each cursor last moved (for the figure swap animation)
@@ -80,7 +80,6 @@ export class CharSelectScene {
   }
 
   label(i) {
-    if (this.mode === 'demo') return `CPU${i + 1}`;
     if (this.mode === '1p' && i === 1) return 'CPU';
     return `${i + 1}P`;
   }
@@ -152,7 +151,7 @@ export class CharSelectScene {
       return;
     }
 
-    // 1P / demo: pick P1 first, then the opponent, with any controller.
+    // 1P: pick P1 first, then the opponent, with any controller.
     const m = { ...input.menu, random: input.p[0].random || input.p[1].random };
     const i = this.stage === 'p1' ? 0 : 1;
     if (pointerCell >= 0) {
@@ -203,7 +202,9 @@ export class CharSelectScene {
     const { W, H } = VIEW;
     const bank = this.game.bank;
     menuBackdrop(g, this.t, '#ff4a4a', '#3a8cff');
-    drawText(g, 'SELECT YOUR FIGHTER', W / 2, 9, { scale: 2.3, align: 'center', color: ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.9)', glow: 'rgba(110,140,255,0.8)' });
+    // the title says what to do right now
+    const title = this.mode === '2p' ? 'SELECT YOUR FIGHTERS' : this.stage === 'p1' ? 'SELECT YOUR FIGHTER' : 'SELECT YOUR OPPONENT';
+    drawText(g, title, W / 2, 9, { scale: 2.3, align: 'center', color: ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.9)', glow: 'rgba(110,140,255,0.8)' });
 
     // ---- both fighters, full body --------------------------------------------------------
     for (let i = 0; i < 2; i++) {
@@ -237,8 +238,7 @@ export class CharSelectScene {
       g.restore();
       if (this.locked[i] && this.t - this.lockT[i] < 10) glow(g, x, 150, 130, '#ffffff', 1 - (this.t - this.lockT[i]) / 10);
       // name plate (long names shrink to fit beside the grid)
-      let nameScale = 2.4;
-      while (nameScale > 1.4 && textWidth(c.name, nameScale) > 96) nameScale -= 0.1;
+      const nameScale = fitScale(c.name, 96, 2.4, 1.4);
       drawText(g, c.name, x, 243 + (2.4 - nameScale) * 3, { scale: nameScale, align: 'center', color: this.locked[i] ? ['#ffffff', '#fff3a0', '#ffd23f'] : ['#ffffff', '#cdd8ff'], outline: 'rgba(5,6,24,0.9)', glow: this.locked[i] ? '#ffb62e' : side.glow });
       if (c.isNew) newBadge(g, x, 228, this.t, 1.3, true);
       if (this.locked[i]) drawText(g, 'READY!', x, 34, { scale: 1.9, align: 'center', color: this.t % 24 < 16 ? ['#ffffff', side.b] : '#ffffff', outline: 'rgba(5,6,24,0.9)', glow: side.glow });
@@ -268,10 +268,9 @@ export class CharSelectScene {
         g.fillRect(x, y, CELL_W, CELL_H);
         g.restore();
       }
-      let cellScale = 1.05;
-      while (cellScale > 0.7 && textWidth(c.name, cellScale) > CELL_W - 2) cellScale -= 0.05; // long names shrink to fit the cell
+      const cellScale = fitScale(c.name, CELL_W - 3, 1.05, 0.7, { weight: 800 }); // long names shrink to fit the cell
       drawText(g, c.name, x + CELL_W / 2, y + CELL_H - 10, { scale: cellScale, align: 'center', color: '#ffffff', shadow: 'rgba(0,0,0,0.9)', weight: 800 });
-      if (c.isNew) newBadge(g, x + CELL_W - 1, y + 1, this.t);
+      if (c.isNew) newBadge(g, x + CELL_W - 1, y + 1, this.t, 0.72); // small, in the corner, so the face stays visible
     });
     // cursors
     for (let i = 0; i < 2; i++) {
@@ -292,8 +291,9 @@ export class CharSelectScene {
       g.stroke();
       g.restore();
       const tag = this.label(i);
-      const tw = textWidth(tag, 1.05) + 8;
-      const tx = i === 0 ? x - 1 : x + CELL_W + 1 - tw;
+      const tw = textWidth(tag, 1.05, { weight: 800 }) + 8;
+      // on the same cell the two tags meet in the middle instead of overlapping
+      const tx = same ? (i === 0 ? x + CELL_W / 2 - tw - 0.5 : x + CELL_W / 2 + 0.5) : i === 0 ? x - 1 : x + CELL_W + 1 - tw;
       rrPath(g, tx, y - 11, tw, 10, 3);
       g.fillStyle = vgrad(g, y - 11, y - 1, [[0, side.a], [1, side.b]]);
       g.fill();
@@ -301,7 +301,7 @@ export class CharSelectScene {
     }
 
     // ---- info cards: each shown player's special move --------------------------------------
-    const px = GRID_X - 2, pw = GRID_W + 2, py = GRID_BOTTOM + 2, ph = H - py - 22;
+    const px = GRID_X - 2, pw = GRID_W + 2, py = GRID_BOTTOM + 2, ph = H - py - 19;
     const show = this.stage === 'p1' ? [0] : [0, 1];
     show.forEach((i) => {
       const w = show.length === 1 ? pw : pw / 2 - 2;
@@ -309,21 +309,26 @@ export class CharSelectScene {
       const c = CHARACTERS[this.cur[i]];
       const side = COLORS.side[i];
       glass(g, x, py, w, ph, { accent: side.a, r: 5 });
-      let ns = 1.7;
-      while (ns > 1.1 && textWidth(c.special.name, ns) > w - 16) ns -= 0.1; // long move names shrink to fit the card
-      drawText(g, `${c.special.name}`, x + 8, py + 6 + (1.7 - ns) * 3, { scale: ns, color: ['#fff3a0', '#ffd23f'], outline: 'rgba(5,6,24,0.8)', italic: true });
-      wrap(c.special.description.toUpperCase(), show.length === 1 ? 52 : 25).slice(0, 3).forEach((ln, kk) => drawText(g, ln, x + 8, py + 22 + kk * 9.5, { scale: 1.05, color: COLORS.text }));
-      drawText(g, c.bio.toUpperCase(), x + 8, py + ph - 11, { scale: 1, color: COLORS.dim, italic: true });
+      const tw = w - 16;
+      const ns = fitScale(c.special.name, tw, 1.6, 1.1, { italic: true }); // long move names shrink to fit the card
+      drawText(g, c.special.name, x + 8, py + 5 + (1.6 - ns) * 3.5, { scale: ns, color: ['#fff3a0', '#ffd23f'], outline: 'rgba(5,6,24,0.8)', italic: true });
+      // the whole description, as big as fits between the move's name and the bio line
+      const bs = fitScale(c.bio, tw, 1, 0.6, { italic: true });
+      const bioY = py + ph - 4 - 7 * bs, top = py + 19, room = bioY - 3 - top;
+      let ds = 1.05, lines = wrap(c.special.description.toUpperCase(), tw, ds);
+      while (lines.length * ds * 9 > room && ds > 0.75) lines = wrap(c.special.description.toUpperCase(), tw, (ds = Math.round((ds - 0.05) * 100) / 100));
+      lines.forEach((ln, kk) => drawText(g, ln, x + 8, top + kk * ds * 9, { scale: ds, color: COLORS.text }));
+      drawText(g, c.bio, x + 8, bioY, { scale: bs, color: COLORS.dim, italic: true });
     });
 
     // ---- hints -----------------------------------------------------------------------------------
-    let parts;
-    if (this.mode === '2p') parts = [['F', 'PICK'], ['G', 'BACK'], ['H', 'RANDOM'], ['K', 'P2 PICK']];
-    else parts = [['Z', 'PICK'], ['X', 'BACK'], ['C', 'RANDOM'], ['↑↓◀▶', 'MOVE']];
-    hints(g, parts, H - 15);
-    if (this.mode !== '2p') {
-      const t = this.stage === 'p1' ? (this.mode === 'demo' ? 'PICK CPU 1' : 'PICK YOUR FIGHTER') : this.mode === 'demo' ? 'PICK CPU 2' : 'PICK YOUR OPPONENT';
-      drawText(g, t, W / 2, 28, { scale: 1.3, align: 'center', color: COLORS.dim });
+    // both players' keys in 2P (P1 / P2), the single-player keys otherwise
+    if (this.mode === '2p') {
+      const key = (a) => `${keyLabel(KEYS.p1[a])} / ${keyLabel(KEYS.p2[a])}`;
+      hints(g, [[key('attack'), 'PICK'], [key('defend'), 'BACK'], [key('special'), 'RANDOM']], H - 15);
+    } else {
+      const key = (a) => keyLabel(KEYS.solo[a]);
+      hints(g, [[key('attack'), 'PICK'], [key('defend'), 'BACK'], [key('special'), 'RANDOM'], ['↑↓◀▶', 'MOVE']], H - 15);
     }
     if (this.doneT) {
       g.fillStyle = `rgba(255,255,255,${Math.max(0, 0.5 - this.doneT / 30)})`;

@@ -5,6 +5,7 @@ import { drawWounds, drawGored, drawLens, leanOf } from './wounds.js';
 import { drawAnnounce, drawCutIn } from './hud.js';
 import { drawFrame } from './sprites.js';
 import { postProcess } from './post.js';
+import { withAlpha } from './pixel.js';
 
 const { W, H, GROUND_Y } = VIEW;
 
@@ -18,6 +19,8 @@ export function drawFighter(g, f, bank, battle, reflect = 0) {
   const giant = f.scale > 1.9; // a giant fighter gets frames twice as dense so it stays sharp
   const spr = bank.frame(f.def.id, pose, frame, f.costume, tint, giant);
   let sx = f.scale, sy = f.scale;
+  // standing idle breathes: a gentle, continuous rise and fall (rather than flipping between two poses a pixel apart)
+  if (f.state === 'idle') sy *= 1 - 0.011 * (0.5 - 0.5 * Math.cos(f.t * 0.075));
   if (f.squish > 0) {
     sx *= 0.8;
     sy *= 1.06;
@@ -98,11 +101,12 @@ function drawShadow(g, f) {
 
 /**
  * The camera follows the fighters and zooms in a little when they are close.
- * Smoothed over time; the state lives on the battle.
+ * Smoothed per game update (not per drawn frame, so it moves the same on a 60 Hz or a 120 Hz screen,
+ * and holds still while the game is paused); the state lives on the battle.
  */
 function updateCamera(battle) {
   const [a, b] = battle.fighters;
-  const cam = (battle.cam ||= { z: 1, x: 0, init: false });
+  const cam = (battle.cam ||= { z: 1, x: 0, init: false, frame: battle.frame });
   const dist = Math.abs(a.x - b.x);
   const close = Math.max(0, Math.min(1, (300 - dist) / 190));
   let zt = 1 + 0.15 * close * close * (3 - 2 * close);
@@ -111,7 +115,8 @@ function updateCamera(battle) {
   zt = Math.min(zt, H / Math.max(H * 0.55, H - Math.max(0, topY - 14)));
   if (battle.fatal) zt = Math.min(Math.max(zt, battle.fatal.def.zoom ?? 1.35), H / Math.max(H * 0.55, H - Math.max(0, topY - 14)));
   zt = Math.max(1, zt);
-  const k = cam.init ? 0.09 : 1;
+  const k = cam.init ? 1 - 0.91 ** (battle.frame - cam.frame) : 1;
+  cam.frame = battle.frame;
   cam.z += (zt - cam.z) * k;
   const mid = (a.x + b.x) / 2;
   const xt = Math.max(0, Math.min(W - W / cam.z, mid - W / (2 * cam.z)));
@@ -177,10 +182,6 @@ export function drawBattle(g, battle, bank, hud, frame, debug = false, opts = {}
   postProcess(g, frame);
 }
 
-const withAlpha = (hex, a) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-};
 
 /** Hitbox viewer (toggle with the ` key). */
 function drawDebug(g, battle) {

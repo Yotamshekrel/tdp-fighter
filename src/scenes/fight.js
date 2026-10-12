@@ -29,13 +29,12 @@ export class FightScene {
     const input = this.game.input;
     input.mode = mode === '2p' ? '2p' : '1p';
     const human = (i) => new HumanController(input, i);
-    const controllers =
-      mode === '2p' ? [human(0), human(1)] :
-      mode === 'demo' ? [new CpuBot(difficulty), new CpuBot(difficulty)] :
-      [human(0), new CpuBot(difficulty)];
-    const gore = !!this.game.grownUp && mode !== 'demo'; // grown-up mode, asked in the menu
+    const controllers = mode === '2p' ? [human(0), human(1)] : [human(0), new CpuBot(difficulty)];
+    const gore = !!this.game.grownUp; // grown-up mode, asked in the menu
     this.battle = new Battle({ chars, controllers, arena, gore });
-    this.tracker = mode === 'demo' ? null : trackMatch({ mode, difficulty, arena, chars });
+    this.ids = chars.map((c) => c.id);
+    this.game.bank.keep(this.ids);
+    this.tracker = trackMatch({ mode, difficulty, arena, chars });
     this.hud = new Hud();
     this.pauseItems = mode === 'tournament' ? TOURNAMENT_PAUSE_ITEMS : PAUSE_ITEMS;
     this.paused = false;
@@ -43,16 +42,16 @@ export class FightScene {
     this.t = 0;
     this.endT = 0;
     this.rects = [];
-    // Every match starts with a reminder of the buttons (not in CPU demos, and only for a tournament's first fight).
-    this.card = mode === 'demo' || (params.tournament && params.tournament.round > 0) ? -1 : 0;
+    // Every match starts with a reminder of the buttons (in a tournament, only before its first fight).
+    this.card = params.tournament && params.tournament.round > 0 ? -1 : 0;
     this.game.audio.playMusic(getArena(arena).music); // each arena has its own track
   }
 
   update() {
     this.t++;
-    const { input, audio } = this.game;
+    const { input, audio, bank } = this.game;
+    bank.prewarm(this.ids); // (normally already done on the VS screen)
     const m = input.menu;
-    const demo = this.params.mode === 'demo';
     audio.muffle(this.paused);
 
     if (this.card >= 0) {
@@ -74,8 +73,7 @@ export class FightScene {
       if (m.confirm || (m.click && hov >= 0)) this.choose();
       return;
     }
-    if (m.pause || (demo && (m.confirm || m.click))) {
-      if (demo) return this.game.go('mode');
+    if (m.pause) {
       this.paused = true;
       this.sel = 0;
       audio.play('pause');
@@ -88,6 +86,7 @@ export class FightScene {
       this.playEvent(ev);
     }
     if (this.battle.phase === 'intro' && this.battle.phaseT === 1) this.hud.reset();
+    this.hud.update(this.battle);
     if (this.battle.phase === 'matchEnd' && ++this.endT > 40) {
       this.tracker?.end({ winner: this.battle.matchWinner?.side ?? -1, rounds: this.battle.round });
       this.tracker = null;
@@ -152,12 +151,10 @@ export class FightScene {
       drawControlsCard(g, { mode: this.params.mode, chars: this.params.chars, t: this.card, total: CARD_FRAMES });
       return;
     }
-    if (this.params.mode === 'demo' && this.t % 60 < 40) {
-      drawText(g, 'DEMO - PRESS ANY BUTTON TO EXIT', W / 2, 44, { scale: 1.3, align: 'center', color: '#ffffff', outline: 'rgba(5,6,24,0.9)' });
-    }
     if (this.paused) {
       dim(g, 0.62);
-      glass(g, W / 2 - 100, 62, 200, 130, { accent: '#ffd23f' });
+      const n = this.pauseItems.length;
+      glass(g, W / 2 - 100, 62, 200, 54 + n * 21, { accent: '#ffd23f' });
       drawText(g, 'PAUSED', W / 2, 72, { scale: 3.6, align: 'center', color: GOLD, outline: 'rgba(5,6,24,0.9)', glow: '#ffb62e' });
       this.rects = drawMenu(g, this.pauseItems, this.sel, W / 2, 108, this.t, { gap: 21, scale: 1, width: 150 });
     }
