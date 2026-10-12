@@ -11,10 +11,36 @@ import { COLORS, glass, glow, rrPath, vgrad, menuBackdrop } from '../render/ui-k
 import { postProcess } from '../render/post.js';
 import { hints } from './ui.js';
 
-const COLS = 8;
-const CELL_W = 32, CELL_H = 42, PITCH_X = 35, PITCH_Y = 46;
-const GRID_X = Math.round((VIEW.W - (COLS * PITCH_X - 5)) / 2);
-const GRID_Y = 40;
+// Two groups: the TDPST, then the mentors and the rest (drawn as a centred row under a divider).
+const MENTORS = ['nethanel', 'rashida', 'noa-ple', 'danny', 'tal'];
+const COLS = 9;
+const CELL_W = 28, CELL_H = 36, PITCH_X = 31, PITCH_Y = 40;
+const GRID_W = COLS * PITCH_X - (PITCH_X - CELL_W);
+const GRID_X = Math.round((VIEW.W - GRID_W) / 2);
+const GRID_Y = 50;
+const GROUP_GAP = 17; // extra space between the groups (room for the second one's label)
+const GROUPS = [
+  { label: 'THE TDPST', idx: CHARACTERS.map((c, k) => k).filter((k) => !MENTORS.includes(CHARACTERS[k].id)) },
+  { label: 'MENTORS & MORE', idx: CHARACTERS.map((c, k) => k).filter((k) => MENTORS.includes(CHARACTERS[k].id)) },
+];
+// ROWS[r] = character indices on screen row r; SLOT[k] = where character k's cell is.
+const ROWS = [];
+const SLOT = [];
+const LABELS = []; // [text, y]
+let rowY = GRID_Y;
+GROUPS.forEach((gr, gi) => {
+  if (!gr.idx.length) return;
+  if (gi > 0) rowY += GROUP_GAP;
+  LABELS.push([gr.label, rowY - 18]);
+  for (let i = 0; i < gr.idx.length; i += COLS) {
+    const row = gr.idx.slice(i, i + COLS);
+    const x0 = GRID_X + (GRID_W - (row.length * PITCH_X - (PITCH_X - CELL_W))) / 2;
+    row.forEach((k, c) => { SLOT[k] = { x: Math.round(x0 + c * PITCH_X), y: rowY, row: ROWS.length }; });
+    ROWS.push(row);
+    rowY += PITCH_Y;
+  }
+});
+const GRID_BOTTOM = rowY - PITCH_Y + CELL_H;
 const FIG_X = [60, VIEW.W - 60];
 
 /** A small pulsing "NEW" pill whose top edge is at y and whose right edge (or centre) is at x. */
@@ -60,12 +86,16 @@ export class CharSelectScene {
   }
 
   move(i, dx, dy) {
-    const n = CHARACTERS.length;
-    const rows = Math.ceil(n / COLS);
-    let c = this.cur[i] % COLS, r = Math.floor(this.cur[i] / COLS);
-    c = (c + dx + COLS) % COLS;
-    r = (r + dy + rows) % rows;
-    this.cur[i] = Math.min(n - 1, r * COLS + c);
+    const cur = this.cur[i];
+    let r = SLOT[cur].row, c = ROWS[r].indexOf(cur);
+    if (dx) c = (c + dx + ROWS[r].length) % ROWS[r].length;
+    if (dy) {
+      // up/down lands on the cell closest (sideways) to where the cursor was, so the groups line up
+      const cx = SLOT[cur].x;
+      r = (r + dy + ROWS.length) % ROWS.length;
+      c = ROWS[r].reduce((best, k, j) => (Math.abs(SLOT[k].x - cx) < Math.abs(SLOT[ROWS[r][best]].x - cx) ? j : best), 0);
+    }
+    this.cur[i] = ROWS[r][c];
     this.moveT[i] = this.t;
     this.game.audio.play('move');
   }
@@ -79,7 +109,7 @@ export class CharSelectScene {
 
   cellAt(p) {
     for (let k = 0; k < CHARACTERS.length; k++) {
-      const x = GRID_X + (k % COLS) * PITCH_X, y = GRID_Y + Math.floor(k / COLS) * PITCH_Y;
+      const { x, y } = SLOT[k];
       if (p.x >= x && p.x < x + CELL_W && p.y >= y && p.y < y + CELL_H) return k;
     }
     return -1;
@@ -215,8 +245,13 @@ export class CharSelectScene {
     }
 
     // ---- the grid -----------------------------------------------------------------------------
+    for (const [label, ly] of LABELS) {
+      drawText(g, label, GRID_X, ly, { scale: 1.05, color: COLORS.dim, weight: 800 });
+      g.fillStyle = 'rgba(160,175,255,0.25)';
+      g.fillRect(GRID_X + textWidth(label, 1.05) + 5, ly + 3, GRID_W - textWidth(label, 1.05) - 5, 1);
+    }
     CHARACTERS.forEach((c, k) => {
-      const x = GRID_X + (k % COLS) * PITCH_X, y = GRID_Y + Math.floor(k / COLS) * PITCH_Y;
+      const { x, y } = SLOT[k];
       const taken = this.locked[0] && this.cur[0] === k || this.locked[1] && this.cur[1] === k;
       glass(g, x, y, CELL_W, CELL_H, { r: 4, shadow: false, fill: vgrad(g, y, y + CELL_H, [[0, 'rgba(48,58,120,0.9)'], [1, 'rgba(16,20,56,0.92)']]) });
       const p = bank.portrait(c.id);
@@ -242,8 +277,7 @@ export class CharSelectScene {
     for (let i = 0; i < 2; i++) {
       const active = this.stage === 'both' || (this.stage === 'p1' ? i === 0 : true);
       if (!active) continue;
-      const k = this.cur[i];
-      const x = GRID_X + (k % COLS) * PITCH_X, y = GRID_Y + Math.floor(k / COLS) * PITCH_Y;
+      const { x, y } = SLOT[this.cur[i]];
       const side = COLORS.side[i];
       const same = this.cur[0] === this.cur[1] && this.stage !== 'p1';
       const o = same ? (i === 0 ? -1.5 : 1.5) : 0;
@@ -267,7 +301,7 @@ export class CharSelectScene {
     }
 
     // ---- info cards: each shown player's special move --------------------------------------
-    const px = GRID_X - 2, pw = COLS * PITCH_X - 1, py = GRID_Y + Math.ceil(CHARACTERS.length / COLS) * PITCH_Y + 2, ph = H - py - 22;
+    const px = GRID_X - 2, pw = GRID_W + 2, py = GRID_BOTTOM + 2, ph = H - py - 22;
     const show = this.stage === 'p1' ? [0] : [0, 1];
     show.forEach((i) => {
       const w = show.length === 1 ? pw : pw / 2 - 2;

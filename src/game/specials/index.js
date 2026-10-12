@@ -35,12 +35,14 @@ import lateSwag from './late-swag.js';
 import pleTraining from './ple-training.js';
 import milkyWay from './milky-way.js';
 import replyAll from './reply-all.js';
+import floodOfTears from './flood-of-tears.js';
+import avatarState from './avatar-state.js';
 
 export const SPECIALS = {
   laserEyes, babyRattle, caneWhack, trophyBoomerang, magicBolt, handFlurry,
   sprintDash, surfWave, tequilaToss, acBlast, bugSwarm, bearHug,
   dessertBarrage, spineChoke, jackpotRain, baguette, giantStomp, soundBlast, kaderLecture,
-  lateSwag, pleTraining, milkyWay, replyAll,
+  lateSwag, pleTraining, milkyWay, replyAll, floodOfTears, avatarState,
 };
 
 export function getSpecial(type) {

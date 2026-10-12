@@ -155,6 +155,51 @@ export function drawEyes(g, HT, h, cos) {
       g.fillRect(x - HH * 0.26, ey - HH * 0.26, HH * 0.52, HH * 0.52);
     }
   }
+  if (cos.eyes === 'cry') {
+    // red, swollen lids and a tear running down each cheek
+    for (const dx of [-0.14, 0.12]) {
+      const x = ex + h.w * dx;
+      const drift = dx < 0 ? -h.w * 0.05 : h.w * 0.05;
+      const yEnd = ey + (h.chin - ey) * 0.72;
+      shape(g, 'rgba(214,72,86,0.42)', ellipse(x, ey + HH * 0.035, HH * 0.1, HH * 0.055), 0);
+      g.lineCap = 'round';
+      for (const [lw, col, off] of [[HH * 0.05, 'rgba(110,200,255,0.8)', 0], [HH * 0.016, 'rgba(255,255,255,0.85)', -HH * 0.012]]) {
+        g.strokeStyle = col;
+        g.lineWidth = lw;
+        g.beginPath();
+        g.moveTo(x + off, ey + HH * 0.04);
+        g.bezierCurveTo(x + drift * 0.2 + off, ey + (yEnd - ey) * 0.4, x + drift + off, ey + (yEnd - ey) * 0.7, x + drift * 1.2 + off, yEnd);
+        g.stroke();
+      }
+      shape(g, '#8fd8ff', ellipse(x + drift * 1.2, yEnd + HH * 0.02, HH * 0.034, HH * 0.05), 0);
+    }
+  }
+  if (cos.eyes === 'avatar') {
+    // white, glowing eyes and the blue arrow of an Airbender on the forehead
+    for (const dx of [-0.14, 0.12]) {
+      const x = ex + h.w * dx;
+      const gr = g.createRadialGradient(x, ey, 1, x, ey, HH * 0.17);
+      gr.addColorStop(0, 'rgba(255,255,255,1)');
+      gr.addColorStop(0.4, 'rgba(238,250,255,0.97)');
+      gr.addColorStop(1, 'rgba(120,200,255,0)');
+      g.fillStyle = gr;
+      g.fillRect(x - HH * 0.19, ey - HH * 0.19, HH * 0.38, HH * 0.38);
+    }
+    const ax = ex - h.w * 0.01, y1 = ey - HH * 0.1, y0 = ey - HH * 0.34;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (const [lw, col] of [[HH * 0.07, 'rgba(70,170,255,0.4)'], [HH * 0.038, '#4cb8ff'], [HH * 0.014, '#ffffff']]) {
+      g.strokeStyle = col;
+      g.lineWidth = lw;
+      g.beginPath();
+      g.moveTo(ax, y1);
+      g.lineTo(ax, y0);
+      g.moveTo(ax - HH * 0.06, y0 + HH * 0.07);
+      g.lineTo(ax, y0);
+      g.lineTo(ax + HH * 0.06, y0 + HH * 0.07);
+      g.stroke();
+    }
+  }
   if (cos.baby) {
     // pacifier, just below the mouth
     const x = ex + h.w * 0.04, y = ey + (h.chin - ey) * 0.62;

@@ -125,6 +125,16 @@ export const POSES = {
     P({ hip: [0, -22], chest: [1, -42], fk: [8, -11], ff: [10, 0], bk: [-8, -11], bf: [-10, 0], fe: [10, -46], fh: [18, -50], be: [-8, -44], bh: [-16, -48] }),
     P({ hip: [0, -22], chest: [1, -42], fk: [8, -11], ff: [10, 0], bk: [-8, -11], bf: [-10, 0], fe: [10, -44], fh: [18, -46], be: [-8, -46], bh: [-16, -52] }),
   ],
+  // both hands over the face, shoulders shaking (Ayoub, sobbing)
+  cry: [
+    P({ chest: [1, -47], fe: [8, -40], fh: [9, -52], be: [3, -41], bh: [6, -53] }),
+    bob(P({ chest: [1, -47], fe: [8, -40], fh: [10, -53], be: [3, -41], bh: [7, -54] }), 1),
+  ],
+  // arms flung wide, glowing (Ben, in the Avatar State)
+  avatar: [
+    P({ chest: [0, -48], fe: [13, -52], fh: [25, -55], be: [-9, -52], bh: [-22, -57], fk: [5, -13], ff: [6, 0], bk: [-4, -13], bf: [-6, 0] }),
+    bob(P({ chest: [0, -48], fe: [13, -53], fh: [25, -57], be: [-9, -53], bh: [-22, -59], fk: [5, -13], ff: [6, 0], bk: [-4, -13], bf: [-6, 0] }), 1),
+  ],
   hugOpen: [P({ fe: [10, -50], fh: [18, -58], be: [-6, -52], bh: [-9, -62] })],
   hug: [
     P({ ...LUNGE, chest: [3, -47], fe: [12, -44], fh: [18, -40], be: [10, -46], bh: [16, -44] }),

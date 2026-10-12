@@ -457,8 +457,19 @@ async function buildOne(file) {
   };
 
   // portrait: head and the top of the shoulders, 28:32 like the old pixel portraits
-  const ph = (chin - headTop) * 1.28, pw = (ph * 28) / 32;
-  const pLeft = Math.round(head.cx - pw / 2 + 0.03 * pw), pTop = Math.round(headTop - ph * 0.04);
+  // Long hair is much wider than the face and flows down over the shoulders, so the women's portraits get a
+  // roomier frame: at least 1.5 heads tall, and wide enough for all of the hair.
+  const baseH = (chin - headTop) * 1.28, baseW = (baseH * 28) / 32;
+  let pw = baseW, ph = baseH, pCx = head.cx + 0.03 * baseW;
+  if (def?.look?.female) {
+    let wx0 = W, wx1 = -1;
+    for (let y = Math.floor(headTop); y <= Math.min(headCut - 1, chin + (chin - headTop) * 0.22); y++) for (let x = 0; x < W; x++) if (lab[y * W + x] === HEAD) { if (x < wx0) wx0 = x; if (x > wx1) wx1 = x; }
+    const hairW = (wx1 - wx0 + 1) * 1.06;
+    ph = Math.max((chin - headTop) * 1.5, (hairW * 32) / 28);
+    pw = (ph * 28) / 32;
+    if (hairW > (chin - headTop) * 1.5 * 0.875) pCx = (wx0 + wx1) / 2;
+  }
+  const pLeft = Math.round(pCx - pw / 2), pTop = Math.round(headTop - ph * 0.04);
   const full = Buffer.from(px.buffer);
   const ext = { top: 60, bottom: 60, left: 60, right: 60 };
   await sharp(await sharp(full, { raw: { width: W, height: H, channels: 4 } }).extend({ ...ext, background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer())
